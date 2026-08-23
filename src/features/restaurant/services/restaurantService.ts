@@ -171,9 +171,21 @@ export const restaurantService = {
   },
 
   // Menu Items
-  getMenuItems: async (params?: { category_id?: number; search?: string; available_only?: boolean }): Promise<MenuItem[]> => {
-    const res = await apiClient.get('/restaurant/items/', { params });
-    return res.data.results || res.data;
+  getMenuItems: async (params?: { category_id?: number; search?: string; available_only?: boolean; page?: number; page_size?: number }): Promise<{ items: MenuItem[]; totalCount: number }> => {
+    try {
+      const res = await apiClient.get('/restaurant/items/', { params });
+      if (res.data && Array.isArray(res.data.results)) {
+        return {
+          items: res.data.results,
+          totalCount: res.data.count ?? res.data.results.length,
+        };
+      } else if (Array.isArray(res.data)) {
+        return { items: res.data, totalCount: res.data.length };
+      }
+      return { items: [], totalCount: 0 };
+    } catch {
+      return { items: [], totalCount: 0 };
+    }
   },
   createMenuItem: async (data: Partial<MenuItem>): Promise<MenuItem> => {
     const res = await apiClient.post('/restaurant/items/', data);
@@ -217,9 +229,23 @@ export const restaurantService = {
     search?: string;
     active_kitchen?: boolean;
     date?: string;
-  }): Promise<RestaurantOrder[]> => {
-    const res = await apiClient.get('/restaurant/orders/', { params });
-    return res.data.results || res.data;
+    page?: number;
+    page_size?: number;
+  }): Promise<{ items: RestaurantOrder[]; totalCount: number }> => {
+    try {
+      const res = await apiClient.get('/restaurant/orders/', { params });
+      if (res.data && Array.isArray(res.data.results)) {
+        return {
+          items: res.data.results,
+          totalCount: res.data.count ?? res.data.results.length,
+        };
+      } else if (Array.isArray(res.data)) {
+        return { items: res.data, totalCount: res.data.length };
+      }
+      return { items: [], totalCount: 0 };
+    } catch {
+      return { items: [], totalCount: 0 };
+    }
   },
   getOrderDetail: async (id: number): Promise<RestaurantOrder> => {
     const res = await apiClient.get(`/restaurant/orders/${id}/`);

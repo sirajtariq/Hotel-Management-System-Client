@@ -31,6 +31,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 export function TenantsPage() {
   const { impersonateTenant } = useAuth();
   const [tenants, setTenants] = useState<TenantItem[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [metrics, setMetrics] = useState<TenantMetrics | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -56,11 +57,12 @@ export function TenantsPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [tenantsData, metricsData] = await Promise.all([
-        tenantService.getTenants(),
+      const [tenantsRes, metricsData] = await Promise.all([
+        tenantService.getTenants({ page: currentPage, page_size: pageSize, search: searchQuery }),
         tenantService.getMetrics(),
       ]);
-      setTenants(tenantsData);
+      setTenants(tenantsRes.items);
+      setTotalCount(tenantsRes.totalCount);
       setMetrics(metricsData);
     } catch (error) {
       console.error('Failed to load tenants data:', error);
@@ -71,7 +73,7 @@ export function TenantsPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [currentPage, pageSize, searchQuery]);
 
   const handleOpenCreateModal = () => {
     setEditingTenant(null);
@@ -440,14 +442,14 @@ export function TenantsPage() {
                     <td className="py-3 px-4 text-right"><Skeleton className="h-7 w-24 ml-auto rounded-md" /></td>
                   </tr>
                 ))
-              ) : filteredTenants.length === 0 ? (
+              ) : tenants.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-400 font-medium">
                     No tenants found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                paginatedTenants.map((tenant) => (
+                tenants.map((tenant) => (
                   <tr key={tenant.id} className="hover:bg-slate-50/70 transition-colors">
                     {/* Hotel Name & Slug */}
                     <td className="py-3 px-4">
@@ -611,7 +613,7 @@ export function TenantsPage() {
           onPageChange={setCurrentPage}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          totalItems={filteredTenants.length}
+          totalItems={totalCount}
         />
       </div>
 

@@ -27,7 +27,7 @@ export function PlatformAnalyticsPage() {
         tenantService.getTenants(),
       ]);
       setMetrics(m);
-      setTenants(t);
+      setTenants(t.items);
     } catch (err) {
       console.error('Failed to load platform analytics:', err);
     } finally {

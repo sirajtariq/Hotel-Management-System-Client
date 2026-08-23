@@ -80,13 +80,23 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const expenseService = {
-  async getExpenses(): Promise<Expense[]> {
+  async getExpenses(params?: { page?: number; page_size?: number; search?: string }): Promise<{ items: Expense[]; totalCount: number }> {
     try {
-      const response = await apiClient.get('/expenses/');
-      const rawList = extractArray<any>(response.data, []);
-      return rawList.map(normalizeExpense);
+      const response = await apiClient.get('/expenses/', { params });
+      if (response.data && Array.isArray(response.data.results)) {
+        return {
+          items: response.data.results.map(normalizeExpense),
+          totalCount: response.data.count ?? response.data.results.length,
+        };
+      } else if (Array.isArray(response.data)) {
+        return {
+          items: response.data.map(normalizeExpense),
+          totalCount: response.data.length,
+        };
+      }
+      return { items: [], totalCount: 0 };
     } catch {
-      return [];
+      return { items: [], totalCount: 0 };
     }
   },
 

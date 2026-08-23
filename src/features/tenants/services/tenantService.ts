@@ -74,12 +74,23 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const tenantService = {
-  async getTenants(): Promise<TenantItem[]> {
+  async getTenants(params?: { page?: number; page_size?: number; search?: string }): Promise<{ items: TenantItem[]; totalCount: number }> {
     try {
-      const response = await apiClient.get('/tenants/');
-      return extractArray<TenantItem>(response.data, MOCK_TENANTS);
+      const response = await apiClient.get('/tenants/', { params });
+      if (response.data && Array.isArray(response.data.results)) {
+        return {
+          items: response.data.results,
+          totalCount: response.data.count ?? response.data.results.length,
+        };
+      } else if (Array.isArray(response.data)) {
+        return {
+          items: response.data,
+          totalCount: response.data.length,
+        };
+      }
+      return { items: MOCK_TENANTS, totalCount: MOCK_TENANTS.length };
     } catch {
-      return MOCK_TENANTS;
+      return { items: MOCK_TENANTS, totalCount: MOCK_TENANTS.length };
     }
   },
 

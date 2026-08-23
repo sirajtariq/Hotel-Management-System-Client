@@ -21,6 +21,9 @@ export function BookingsPage() {
   const isPureSuperAdmin = (role === 'super_admin' || role === 'superadmin') && !is_impersonated;
 
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -30,14 +33,15 @@ export function BookingsPage() {
   useEffect(() => {
     setIsLoading(true);
     bookingService
-      .getBookings()
-      .then((data) => {
-        setBookings(Array.isArray(data) ? data : []);
+      .getBookings({ page: currentPage, page_size: pageSize, search })
+      .then((res) => {
+        setBookings(res.items);
+        setTotalCount(res.totalCount);
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [currentPage, pageSize, search]);
 
   const handleStatusChange = async (id: string, status: BookingStatus) => {
     if (isPureSuperAdmin) return;
@@ -71,20 +75,6 @@ export function BookingsPage() {
       toast.error('Payment Failed', 'Could not record payment transaction.');
     }
   };
-
-  const safeBookings = Array.isArray(bookings) ? bookings : [];
-
-  const filteredBookings = safeBookings.filter((b) => {
-    const query = search.toLowerCase();
-    const ref = b.bookingReference || '';
-    const guestName = b.guest?.fullName || '';
-    const roomNum = b.roomNumber || '';
-    return (
-      ref.toLowerCase().includes(query) ||
-      guestName.toLowerCase().includes(query) ||
-      roomNum.toLowerCase().includes(query)
-    );
-  });
 
   return (
     <PermissionGuard permission="bookings:view" moduleName="Reservations & Bookings">
@@ -121,7 +111,10 @@ export function BookingsPage() {
             <Input
               placeholder="Search booking ref, guest name, or room..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               className="pl-9 text-xs"
             />
           </div>
@@ -131,7 +124,15 @@ export function BookingsPage() {
           <TableSkeleton rows={8} cols={7} />
         ) : (
           <BookingDataTable
-            bookings={filteredBookings}
+            bookings={bookings}
+            totalCount={totalCount}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
             onStatusChange={handleStatusChange}
             onRecordPayment={(b) => setPaymentBooking(b)}
             onPrintInvoice={(b) => setInvoiceBooking(b)}

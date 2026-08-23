@@ -113,13 +113,23 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const bookingService = {
-  async getBookings(): Promise<Booking[]> {
+  async getBookings(params?: { page?: number; page_size?: number; search?: string }): Promise<{ items: Booking[]; totalCount: number }> {
     try {
-      const response = await apiClient.get('/bookings/');
-      const rawList = extractArray<any>(response.data, []);
-      return rawList.map(normalizeBooking);
+      const response = await apiClient.get('/bookings/', { params });
+      if (response.data && Array.isArray(response.data.results)) {
+        return {
+          items: response.data.results.map(normalizeBooking),
+          totalCount: response.data.count ?? response.data.results.length,
+        };
+      } else if (Array.isArray(response.data)) {
+        return {
+          items: response.data.map(normalizeBooking),
+          totalCount: response.data.length,
+        };
+      }
+      return { items: [], totalCount: 0 };
     } catch {
-      return [];
+      return { items: [], totalCount: 0 };
     }
   },
 

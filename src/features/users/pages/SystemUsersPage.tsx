@@ -62,6 +62,7 @@ const MOCK_SYSTEM_USERS: SystemUserItem[] = [
 
 export function SystemUsersPage() {
   const [users, setUsers] = useState<SystemUserItem[]>(MOCK_SYSTEM_USERS);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [resetTargetUser, setResetTargetUser] = useState<SystemUserItem | null>(null);
@@ -73,33 +74,25 @@ export function SystemUsersPage() {
     const fetchUsers = async () => {
       setIsLoading(true);
       try {
-        const response = await apiClient.get('/users/');
-        if (Array.isArray(response.data)) {
-          setUsers(response.data);
-        } else if (response.data?.results) {
+        const response = await apiClient.get('/users/', {
+          params: { page: currentPage, page_size: pageSize, search: searchQuery },
+        });
+        if (response.data && Array.isArray(response.data.results)) {
           setUsers(response.data.results);
+          setTotalCount(response.data.count ?? response.data.results.length);
+        } else if (Array.isArray(response.data)) {
+          setUsers(response.data);
+          setTotalCount(response.data.length);
         }
       } catch {
         setUsers(MOCK_SYSTEM_USERS);
+        setTotalCount(MOCK_SYSTEM_USERS.length);
       } finally {
         setIsLoading(false);
       }
     };
     fetchUsers();
-  }, []);
-
-  const filteredUsers = users.filter(
-    (u) =>
-      u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.tenant_details?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, users.length]);
-
-  const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [currentPage, pageSize, searchQuery]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -161,7 +154,7 @@ export function SystemUsersPage() {
                   </tr>
                 ))
               ) : (
-                paginatedUsers.map((u) => (
+                users.map((u) => (
                   <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2.5">
@@ -248,7 +241,7 @@ export function SystemUsersPage() {
           onPageChange={setCurrentPage}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          totalItems={filteredUsers.length}
+          totalItems={totalCount}
         />
       </div>
 

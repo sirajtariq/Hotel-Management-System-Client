@@ -20,6 +20,9 @@ import { formatPKR } from '@/lib/formatters';
 
 export function StaffPage() {
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [properties, setProperties] = useState<Property[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [quotaUsage, setQuotaUsage] = useState<{ current: number; max: number | null }>({ current: 0, max: null });
@@ -32,14 +35,15 @@ export function StaffPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [staffData, propsData, rolesData, tenantRes] = await Promise.all([
-        staffService.getStaff(),
+      const [staffRes, propsData, rolesData, tenantRes] = await Promise.all([
+        staffService.getStaff({ page: currentPage, page_size: pageSize }),
         propertyService.getProperties(),
         roleService.getRoles().catch(() => []),
         apiClient.get('/tenants/me/').catch(() => null),
       ]);
 
-      setStaffList(Array.isArray(staffData) ? staffData : []);
+      setStaffList(staffRes.items);
+      setTotalCount(staffRes.totalCount);
       setProperties(Array.isArray(propsData) ? propsData : []);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
 
@@ -58,7 +62,7 @@ export function StaffPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [currentPage, pageSize]);
 
   const handleCreateOrUpdateStaff = async (data: any) => {
     try {
@@ -176,6 +180,14 @@ export function StaffPage() {
         ) : (
           <StaffDataTable
             staffList={staffList}
+            totalCount={totalCount}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
             onEdit={handleOpenEdit}
             onResetPassword={handleOpenResetPassword}
             onDelete={handleDeleteStaff}

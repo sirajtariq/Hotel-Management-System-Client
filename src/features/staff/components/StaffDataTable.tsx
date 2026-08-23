@@ -10,19 +10,27 @@ import { TablePagination } from '@/components/ui/TablePagination';
 
 interface StaffDataTableProps {
   staffList: StaffMember[];
+  totalCount: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
   onEdit: (staff: StaffMember) => void;
   onResetPassword: (staff: StaffMember) => void;
   onDelete: (id: string) => void;
 }
 
-export function StaffDataTable({ staffList, onEdit, onResetPassword, onDelete }: StaffDataTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [staffList.length]);
-
+export function StaffDataTable({
+  staffList,
+  totalCount,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  onEdit,
+  onResetPassword,
+  onDelete,
+}: StaffDataTableProps) {
   if (!staffList.length) {
     return (
       <div className="text-center py-12 bg-white rounded-xl border border-slate-200 shadow-xs">
@@ -30,8 +38,6 @@ export function StaffDataTable({ staffList, onEdit, onResetPassword, onDelete }:
       </div>
     );
   }
-
-  const paginatedStaff = staffList.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-xs">
@@ -48,7 +54,7 @@ export function StaffDataTable({ staffList, onEdit, onResetPassword, onDelete }:
           </TableRow>
         </TableHeader>
         <TableBody className="divide-y divide-slate-100 text-xs">
-          {paginatedStaff.map((staff) => {
+          {staffList.map((staff) => {
             const hasLogin = staff.has_login_access;
             const roleName = staff.custom_role?.name || 'Staff User';
 
@@ -151,10 +157,10 @@ export function StaffDataTable({ staffList, onEdit, onResetPassword, onDelete }:
 
       <TablePagination
         currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        onPageChange={onPageChange}
         pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        totalItems={staffList.length}
+        onPageSizeChange={onPageSizeChange}
+        totalItems={totalCount}
       />
     </div>
   );

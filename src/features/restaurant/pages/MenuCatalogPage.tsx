@@ -8,17 +8,15 @@ import { TablePagination } from '@/components/ui/TablePagination';
 
 export function MenuCatalogPage() {
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
-  const { categories, menuItems, loading, searchQuery, setSearchQuery, fetchCategories, fetchMenuItems, toggleAvailability } =
-    useRestaurantMenu(selectedCatId || undefined);
-
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const { categories, menuItems, totalCount, loading, searchQuery, setSearchQuery, fetchCategories, fetchMenuItems, toggleAvailability } =
+    useRestaurantMenu(selectedCatId || undefined, currentPage, pageSize);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedCatId, menuItems.length]);
-
-  const paginatedMenuItems = menuItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [searchQuery, selectedCatId]);
   const [isCatModalOpen, setIsCatModalOpen] = useState<boolean>(false);
   const [catName, setCatName] = useState<string>('');
   const [catOrder, setCatOrder] = useState<number>(0);
@@ -210,7 +208,7 @@ export function MenuCatalogPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedMenuItems.map((item) => (
+            {menuItems.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
                 <td className="p-4 font-semibold text-slate-900">
                   {item.name}
@@ -269,7 +267,7 @@ export function MenuCatalogPage() {
           onPageChange={setCurrentPage}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          totalItems={menuItems.length}
+          totalItems={totalCount}
         />
       </div>
 

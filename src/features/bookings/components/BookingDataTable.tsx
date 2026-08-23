@@ -6,6 +6,11 @@ import { TablePagination } from '@/components/ui/TablePagination';
 
 interface BookingDataTableProps {
   bookings: Booking[];
+  totalCount: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
   onStatusChange: (id: string, status: BookingStatus) => void;
   onRecordPayment: (booking: Booking) => void;
   onPrintInvoice: (booking: Booking) => void;
@@ -13,18 +18,15 @@ interface BookingDataTableProps {
 
 export function BookingDataTable({
   bookings,
+  totalCount,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
   onStatusChange,
   onRecordPayment,
   onPrintInvoice,
 }: BookingDataTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  // Reset to page 1 when data/search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [bookings.length]);
-
   if (!bookings.length) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
@@ -32,8 +34,6 @@ export function BookingDataTable({
       </div>
     );
   }
-
-  const paginatedBookings = bookings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-xs">
@@ -50,7 +50,7 @@ export function BookingDataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedBookings.map((booking) => (
+          {bookings.map((booking) => (
             <BookingTableRow
               key={booking.id}
               booking={booking}
@@ -64,10 +64,10 @@ export function BookingDataTable({
 
       <TablePagination
         currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        onPageChange={onPageChange}
         pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        totalItems={bookings.length}
+        onPageSizeChange={onPageSizeChange}
+        totalItems={totalCount}
       />
     </div>
   );

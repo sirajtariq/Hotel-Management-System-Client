@@ -85,13 +85,23 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const staffService = {
-  async getStaff(): Promise<StaffMember[]> {
+  async getStaff(params?: { page?: number; page_size?: number; search?: string }): Promise<{ items: StaffMember[]; totalCount: number }> {
     try {
-      const response = await apiClient.get('/staff/');
-      const rawList = extractArray<any>(response.data, []);
-      return rawList.map(normalizeStaff);
+      const response = await apiClient.get('/staff/', { params });
+      if (response.data && Array.isArray(response.data.results)) {
+        return {
+          items: response.data.results.map(normalizeStaff),
+          totalCount: response.data.count ?? response.data.results.length,
+        };
+      } else if (Array.isArray(response.data)) {
+        return {
+          items: response.data.map(normalizeStaff),
+          totalCount: response.data.length,
+        };
+      }
+      return { items: [], totalCount: 0 };
     } catch {
-      return [];
+      return { items: [], totalCount: 0 };
     }
   },
 

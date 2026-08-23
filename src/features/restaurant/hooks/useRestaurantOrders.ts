@@ -11,14 +11,17 @@ export function useRestaurantOrders(filters?: {
   search?: string;
   date?: string;
   autoRefreshMs?: number;
+  page?: number;
+  pageSize?: number;
 }) {
   const [orders, setOrders] = useState<RestaurantOrder[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await restaurantService.getOrders({
+      const res = await restaurantService.getOrders({
         property_id: filters?.property_id,
         status: filters?.status,
         order_type: filters?.order_type,
@@ -26,8 +29,11 @@ export function useRestaurantOrders(filters?: {
         active_kitchen: filters?.active_kitchen,
         search: filters?.search,
         date: filters?.date,
+        page: filters?.page,
+        page_size: filters?.pageSize,
       });
-      setOrders(data);
+      setOrders(res.items);
+      setTotalCount(res.totalCount);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to fetch restaurant orders.');
     } finally {
@@ -41,6 +47,8 @@ export function useRestaurantOrders(filters?: {
     filters?.active_kitchen,
     filters?.search,
     filters?.date,
+    filters?.page,
+    filters?.pageSize,
   ]);
 
   useEffect(() => {
@@ -96,6 +104,7 @@ export function useRestaurantOrders(filters?: {
 
   return {
     orders,
+    totalCount,
     loading,
     refetchOrders: fetchOrders,
     createOrder,

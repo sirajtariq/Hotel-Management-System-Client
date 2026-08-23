@@ -14,6 +14,9 @@ import { Expense, CreateExpenseInput } from '@/types/expenses';
 
 export function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -21,10 +24,13 @@ export function ExpensesPage() {
   useEffect(() => {
     setIsLoading(true);
     expenseService
-      .getExpenses()
-      .then(setExpenses)
+      .getExpenses({ page: currentPage, page_size: pageSize })
+      .then((res) => {
+        setExpenses(res.items);
+        setTotalCount(res.totalCount);
+      })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [currentPage, pageSize]);
 
   const handleAddExpense = async (data: CreateExpenseInput) => {
     try {
@@ -91,7 +97,18 @@ export function ExpensesPage() {
         {isLoading ? (
           <TableSkeleton rows={6} cols={6} />
         ) : (
-          <ExpenseDataTable expenses={expenses} onDelete={handleDeleteExpense} />
+          <ExpenseDataTable
+            expenses={expenses}
+            totalCount={totalCount}
+            currentPage={currentPage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            onDelete={handleDeleteExpense}
+          />
         )}
 
         <AddExpenseModal

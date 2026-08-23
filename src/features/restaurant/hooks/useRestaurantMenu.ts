@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { restaurantService, Category, MenuItem } from '../services/restaurantService';
 import { toast } from '@/components/ui/ToastProvider';
 
-export function useRestaurantMenu(categoryId?: number) {
+export function useRestaurantMenu(categoryId?: number, page: number = 1, pageSize: number = 10) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -20,17 +21,20 @@ export function useRestaurantMenu(categoryId?: number) {
   const fetchMenuItems = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await restaurantService.getMenuItems({
+      const res = await restaurantService.getMenuItems({
         category_id: categoryId,
         search: searchQuery,
+        page,
+        page_size: pageSize,
       });
-      setMenuItems(data);
+      setMenuItems(res.items);
+      setTotalCount(res.totalCount);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to load menu items.');
     } finally {
       setLoading(false);
     }
-  }, [categoryId, searchQuery]);
+  }, [categoryId, searchQuery, page, pageSize]);
 
   useEffect(() => {
     fetchCategories();
@@ -55,6 +59,7 @@ export function useRestaurantMenu(categoryId?: number) {
   return {
     categories,
     menuItems,
+    totalCount,
     loading,
     searchQuery,
     setSearchQuery,

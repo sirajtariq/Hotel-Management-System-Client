@@ -15,17 +15,17 @@ export function OrderHistoryPage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
-  const { orders, loading, refetchOrders } = useRestaurantOrders({
+  const { orders, totalCount, loading, refetchOrders } = useRestaurantOrders({
     search,
     status: statusFilter,
     order_type: orderTypeFilter,
+    page: currentPage,
+    pageSize: pageSize,
   });
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, orderTypeFilter, orders.length]);
-
-  const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [search, statusFilter, orderTypeFilter]);
 
   const [activeReceipt, setActiveReceipt] = useState<ReceiptData | null>(null);
   const [printMode, setPrintMode] = useState<'KOT' | 'CUSTOMER_BILL'>('CUSTOMER_BILL');
@@ -128,7 +128,7 @@ export function OrderHistoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {paginatedOrders.map((o) => (
+            {orders.map((o) => (
               <tr key={o.id} className="hover:bg-slate-50/60 transition-colors">
                 <td className="p-4 font-bold text-slate-900">{o.order_number}</td>
                 <td className="p-4 font-semibold text-indigo-900">{o.order_type}</td>
@@ -196,7 +196,7 @@ export function OrderHistoryPage() {
           onPageChange={setCurrentPage}
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
-          totalItems={orders.length}
+          totalItems={totalCount}
         />
       </div>
 

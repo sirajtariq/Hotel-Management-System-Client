@@ -10,17 +10,23 @@ import { TablePagination } from '@/components/ui/TablePagination';
 
 interface ExpenseDataTableProps {
   expenses: Expense[];
+  totalCount: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
   onDelete?: (id: string) => void;
 }
 
-export function ExpenseDataTable({ expenses, onDelete }: ExpenseDataTableProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [expenses.length]);
-
+export function ExpenseDataTable({
+  expenses,
+  totalCount,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  onDelete,
+}: ExpenseDataTableProps) {
   if (!expenses.length) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
@@ -28,8 +34,6 @@ export function ExpenseDataTable({ expenses, onDelete }: ExpenseDataTableProps) 
       </div>
     );
   }
-
-  const paginatedExpenses = expenses.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white overflow-hidden shadow-xs">
@@ -46,7 +50,7 @@ export function ExpenseDataTable({ expenses, onDelete }: ExpenseDataTableProps) 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {paginatedExpenses.map((exp) => {
+          {expenses.map((exp) => {
             const expTitle = exp.title || (exp as any).item_name || 'Expense Item';
             const expPaidTo = exp.paidTo || (exp as any).vendor_name || 'N/A';
             const expDate = exp.date || (exp as any).expense_date || '';
@@ -85,10 +89,10 @@ export function ExpenseDataTable({ expenses, onDelete }: ExpenseDataTableProps) 
 
       <TablePagination
         currentPage={currentPage}
-        onPageChange={setCurrentPage}
+        onPageChange={onPageChange}
         pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        totalItems={expenses.length}
+        onPageSizeChange={onPageSizeChange}
+        totalItems={totalCount}
       />
     </div>
   );
