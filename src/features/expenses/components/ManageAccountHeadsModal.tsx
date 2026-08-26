@@ -4,6 +4,7 @@ import { expenseService } from '../services/expenseService';
 import { toast } from '@/components/ui/ToastProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TablePagination } from '@/components/ui/TablePagination';
 import { Search, Plus, X, Tag, ToggleLeft, ToggleRight, Loader2, CheckCircle2, Shield } from 'lucide-react';
 
 interface ManageAccountHeadsModalProps {
@@ -21,6 +22,10 @@ export function ManageAccountHeadsModal({
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Form State
   const [name, setName] = useState('');
@@ -92,6 +97,10 @@ export function ManageAccountHeadsModal({
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const filteredHeads = heads.filter((h) => {
     const q = search.toLowerCase();
     return (
@@ -99,6 +108,11 @@ export function ManageAccountHeadsModal({
       (h.description || '').toLowerCase().includes(q)
     );
   });
+
+  const paginatedHeads = filteredHeads.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -224,7 +238,7 @@ export function ManageAccountHeadsModal({
                 No Account Heads found matching query.
               </div>
             ) : (
-              filteredHeads.map((head) => (
+              paginatedHeads.map((head) => (
                 <div
                   key={head.id}
                   className="p-3.5 flex items-center justify-between hover:bg-slate-50/70 transition-colors"
@@ -271,6 +285,14 @@ export function ManageAccountHeadsModal({
               ))
             )}
           </div>
+
+          <TablePagination
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            totalItems={filteredHeads.length}
+          />
         </div>
 
         {/* Modal Footer */}

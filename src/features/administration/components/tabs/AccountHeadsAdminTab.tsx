@@ -5,6 +5,7 @@ import { formatPKR } from '@/lib/formatters';
 import { toast } from '@/components/ui/ToastProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TablePagination } from '@/components/ui/TablePagination';
 import {
   Tag,
   Search,
@@ -21,6 +22,10 @@ export function AccountHeadsAdminTab() {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Form state
   const [name, setName] = useState('');
@@ -83,6 +88,10 @@ export function AccountHeadsAdminTab() {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const filteredHeads = heads.filter((h) => {
     const q = search.toLowerCase();
     return (
@@ -90,6 +99,11 @@ export function AccountHeadsAdminTab() {
       (h.description || '').toLowerCase().includes(q)
     );
   });
+
+  const paginatedHeads = filteredHeads.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   return (
     <div className="space-y-6 font-sans">
@@ -205,69 +219,79 @@ export function AccountHeadsAdminTab() {
             No Account Heads found matching query.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="p-4">Account Head Name</th>
-                  <th className="p-4">Description</th>
-                  <th className="p-4 text-center">Recorded Expenses</th>
-                  <th className="p-4 text-right">Total Spent (PKR)</th>
-                  <th className="p-4 text-center">Status</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredHeads.map((head) => (
-                  <tr key={head.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="p-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
-                          <Tag className="h-4 w-4" />
-                        </div>
-                        <span className="font-bold text-slate-900 text-xs">{head.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-slate-500 max-w-xs truncate">
-                      {head.description || 'No description provided'}
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-full text-xs font-bold">
-                        {head.expenses_count || 0} items
-                      </span>
-                    </td>
-                    <td className="p-4 text-right font-mono font-bold text-rose-700 text-sm">
-                      {formatPKR(parseFloat(String(head.total_spent_amount || 0)))}
-                    </td>
-                    <td className="p-4 text-center">
-                      {head.is_active ? (
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[11px] font-bold border border-emerald-200">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Active
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full text-[11px] font-bold border border-slate-200">
-                          <XCircle className="h-3 w-3 text-slate-400" /> Disabled
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(head.id, head.is_active, head.name)}
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
-                          head.is_active
-                            ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
-                            : 'bg-rose-100 text-rose-900 hover:bg-rose-200'
-                        }`}
-                      >
-                        {head.is_active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                        <span>{head.is_active ? 'Active' : 'Disabled'}</span>
-                      </button>
-                    </td>
+          <div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="p-4">Account Head Name</th>
+                    <th className="p-4">Description</th>
+                    <th className="p-4 text-center">Recorded Expenses</th>
+                    <th className="p-4 text-right">Total Spent (PKR)</th>
+                    <th className="p-4 text-center">Status</th>
+                    <th className="p-4 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {paginatedHeads.map((head) => (
+                    <tr key={head.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+                            <Tag className="h-4 w-4" />
+                          </div>
+                          <span className="font-bold text-slate-900 text-xs">{head.name}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-slate-500 max-w-xs truncate">
+                        {head.description || 'No description provided'}
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-full text-xs font-bold">
+                          {head.expenses_count || 0} items
+                        </span>
+                      </td>
+                      <td className="p-4 text-right font-mono font-bold text-rose-700 text-sm">
+                        {formatPKR(parseFloat(String(head.total_spent_amount || 0)))}
+                      </td>
+                      <td className="p-4 text-center">
+                        {head.is_active ? (
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[11px] font-bold border border-emerald-200">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Active
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full text-[11px] font-bold border border-slate-200">
+                            <XCircle className="h-3 w-3 text-slate-400" /> Disabled
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(head.id, head.is_active, head.name)}
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer ${
+                            head.is_active
+                              ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                              : 'bg-rose-100 text-rose-900 hover:bg-rose-200'
+                          }`}
+                        >
+                          {head.is_active ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
+                          <span>{head.is_active ? 'Active' : 'Disabled'}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <TablePagination
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+              totalItems={filteredHeads.length}
+            />
           </div>
         )}
       </div>
