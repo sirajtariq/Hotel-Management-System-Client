@@ -55,36 +55,39 @@ const MOCK_BOOKINGS: Booking[] = [
 ];
 
 function normalizeBooking(b: any): Booking {
-  const total = parseFloat(b.total_amount || b.totalAmount || '0');
-  const paid = parseFloat(b.paid_amount || b.paidAmount || '0');
-  const remaining = parseFloat(b.remaining_balance || b.remainingAmount || (total - paid));
-  const rate = parseFloat(b.nightly_rate || b.nightlyRate || (total / Math.max(1, b.total_nights || b.totalNights || 1)));
+  const total = parseFloat(b.totalAmount ?? b.total_amount ?? '0');
+  const paid = parseFloat(b.paidAmount ?? b.paid_amount ?? '0');
+  const remVal = b.remainingBalance ?? b.remaining_balance ?? b.remainingAmount ?? (total - paid);
+  const remaining = parseFloat(remVal || '0');
+  const rate = parseFloat(b.nightlyRate ?? b.nightly_rate ?? (total / Math.max(1, b.totalNights ?? b.total_nights ?? 1)));
 
-  const guestName = b.guest?.fullName || b.guest_name || 'Guest';
-  const guestPhone = b.guest?.phone || b.guest_phone || 'N/A';
-  const guestEmail = b.guest?.email || b.guest_email || '';
-  const guestCnic = b.guest?.cnicOrPassport || b.guest_cnic || 'N/A';
+  const guestName = b.guestName || b.guest_name || b.guest?.fullName || 'Guest';
+  const guestPhone = b.guestPhone || b.guest_phone || b.guest?.phone || 'N/A';
+  const guestEmail = b.guestEmail || b.guest_email || b.guest?.email || '';
+  const guestCnic = b.guestCnic || b.guest_cnic || b.guest?.cnicOrPassport || 'N/A';
 
-  const roomNum = b.room_details?.room_number || b.room_number
-    ? `Room ${b.room_details?.room_number || b.room_number}`
-    : (b.roomNumber || 'Room N/A');
+  const roomNum = String(b.roomNumber || b.room_number || b.room_details?.room_number || 'Room N/A');
+  const roomTypeName = b.roomTypeName || b.room_type_name || b.room_details?.room_type?.name || 'Executive Deluxe Suite';
 
-  const ref = b.bookingReference || b.booking_reference || `BK-2026-${String(b.id).padStart(3, '0')}`;
-  const inv = b.invoice_number || b.invoiceNumber || `INV-RS-2026-${String(b.id).padStart(4, '0')}`;
+  const inv = b.invoiceNumber || b.invoice_number || (b.id ? `INV-RS-2026-${String(b.id).padStart(4, '0')}` : '');
+  const ref = b.bookingReference || b.booking_reference || inv || `BK-2026-${String(b.id).padStart(3, '0')}`;
+
+  const rawCheckIn = b.checkInDate || b.check_in_date || (b.checkIn ? String(b.checkIn).split('T')[0] : (b.check_in ? String(b.check_in).split('T')[0] : ''));
+  const rawCheckOut = b.checkOutDate || b.check_out_date || (b.checkOut ? String(b.checkOut).split('T')[0] : (b.check_out ? String(b.check_out).split('T')[0] : ''));
 
   return {
     id: String(b.id),
     bookingReference: ref,
     invoiceNumber: inv,
     tenantId: String(b.tenant || b.tenantId || ''),
-    tenantName: b.tenant_name || b.tenantName || 'Pearl Suites & Hotel Management',
+    tenantName: b.tenantName || b.tenant_name || 'Pearl Suites & Hotel Management',
     propertyId: String(b.property || b.propertyId || ''),
-    propertyName: b.property_name || b.propertyName || 'Pearl Continental & Serviced Suites',
-    propertyAddress: b.property_address || b.propertyAddress || 'Block 4, Clifton, Club Road',
-    propertyCity: b.property_city || b.propertyCity || 'Karachi, Pakistan',
+    propertyName: b.propertyName || b.property_name || 'Pearl Continental & Serviced Suites',
+    propertyAddress: b.propertyAddress || b.property_address || 'Block 4, Clifton, Club Road',
+    propertyCity: b.propertyCity || b.property_city || 'Karachi, Pakistan',
     roomId: String(b.room || b.roomId || ''),
-    roomNumber: roomNum,
-    roomTypeName: b.room_type_name || b.roomTypeName || b.room_details?.room_type?.name || 'Executive Deluxe Suite',
+    roomNumber: roomNum.startsWith('Room ') ? roomNum : `Room ${roomNum}`,
+    roomTypeName: roomTypeName,
     guest: {
       id: b.guest?.id || `gst_${b.id}`,
       fullName: guestName,
@@ -92,16 +95,21 @@ function normalizeBooking(b: any): Booking {
       phone: guestPhone,
       cnicOrPassport: guestCnic,
     },
-    checkInDate: b.check_in_date || b.checkInDate || '',
-    checkOutDate: b.check_out_date || b.checkOutDate || '',
-    totalNights: b.total_nights || b.totalNights || 1,
+    checkInDate: rawCheckIn,
+    checkOutDate: rawCheckOut,
+    checkIn: b.checkIn || b.check_in || null,
+    checkOut: b.checkOut || b.check_out || null,
+    totalNights: b.totalNights || b.total_nights || 1,
+    totalDuration: b.totalDuration || b.total_duration || '',
+    bookingType: b.bookingType || b.booking_type || 'NIGHTLY',
+    booking_type: b.bookingType || b.booking_type || 'NIGHTLY',
     nightlyRate: isNaN(rate) ? 0 : rate,
     totalAmount: isNaN(total) ? 0 : total,
     paidAmount: isNaN(paid) ? 0 : paid,
     remainingAmount: isNaN(remaining) ? 0 : remaining,
     status: (b.status || 'CONFIRMED').toLowerCase() as any,
-    paymentStatus: (b.payment_status || b.paymentStatus || 'UNPAID').toLowerCase() as any,
-    createdAt: b.created_at || b.createdAt || new Date().toISOString().split('T')[0],
+    paymentStatus: (b.paymentStatus || b.payment_status || 'UNPAID').toLowerCase() as any,
+    createdAt: b.createdAt || b.created_at || new Date().toISOString().split('T')[0],
   };
 }
 
@@ -138,62 +146,47 @@ export const bookingService = {
   async updateBookingStatus(id: string, status: BookingStatus): Promise<Booking> {
     try {
       const response = await apiClient.patch<Booking>(`/bookings/${id}/`, { status });
-      return response.data;
-    } catch {
-      const target = MOCK_BOOKINGS.find((b) => b.id === id);
-      if (target) target.status = status;
-      return target || MOCK_BOOKINGS[0];
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
     }
   },
 
   async recordPayment(input: RecordPaymentInput): Promise<Booking> {
     try {
-      const response = await apiClient.post<Booking>(`/bookings/${input.bookingId}/pay/`, input);
-      return response.data;
-    } catch {
-      const target = MOCK_BOOKINGS.find((b) => b.id === input.bookingId);
-      if (target) {
-        target.paidAmount += input.amount;
-        target.remainingAmount = Math.max(0, target.totalAmount - target.paidAmount);
-        target.paymentStatus = target.remainingAmount === 0 ? 'paid' : 'partial';
+      const response = await apiClient.post<Booking>(`/bookings/${input.bookingId}/record-payment/`, {
+        amount: input.amount,
+      });
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
       }
-      return target || MOCK_BOOKINGS[0];
+      throw err;
     }
   },
 
   async createBooking(input: CreateBookingInput): Promise<Booking> {
     try {
       const response = await apiClient.post<Booking>('/bookings/', input);
-      return response.data;
-    } catch {
-      const remaining = Math.max(0, input.totalAmount - input.initialPayment);
-      const newBk: Booking = {
-        id: `bk_${Date.now()}`,
-        bookingReference: `BK-2026-${Math.floor(100 + Math.random() * 900)}`,
-        tenantId: 'tenant_01',
-        propertyId: input.propertyId,
-        propertyName: 'Pearl Continental',
-        roomId: input.roomId,
-        roomNumber: '105 (Deluxe)',
-        guest: {
-          id: `gst_${Date.now()}`,
-          fullName: input.guestName,
-          email: input.guestEmail,
-          phone: input.guestPhone,
-          cnicOrPassport: input.cnicOrPassport,
-        },
-        checkInDate: input.checkInDate,
-        checkOutDate: input.checkOutDate,
-        totalNights: 3,
-        totalAmount: input.totalAmount,
-        paidAmount: input.initialPayment,
-        remainingAmount: remaining,
-        status: 'confirmed',
-        paymentStatus: remaining === 0 ? 'paid' : input.initialPayment > 0 ? 'partial' : 'unpaid',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      MOCK_BOOKINGS.unshift(newBk);
-      return newBk;
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
     }
   },
 };

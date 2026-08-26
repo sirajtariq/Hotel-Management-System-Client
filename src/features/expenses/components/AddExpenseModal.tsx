@@ -299,10 +299,10 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
               type="submit"
               size="sm"
               disabled={isSubmitting || isLoadingMeta}
-              className="text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-bold px-4 gap-1.5"
+              className="text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-bold px-4 gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>Post Expense</span>
+              <span>{isSubmitting ? 'Posting Expense...' : 'Post Expense'}</span>
             </Button>
           </div>
         </form>

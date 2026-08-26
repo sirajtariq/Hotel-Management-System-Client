@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PaymentAccount, AccountType, CreateAccountInput } from '@/types/accounts';
-import { X, CreditCard, Landmark, Wallet, Check, Sparkles } from 'lucide-react';
+import { X, CreditCard, Landmark, Wallet, Check, Sparkles, Loader2 } from 'lucide-react';
+import { toast } from '@/components/ui/ToastProvider';
 import { cn } from '@/lib/utils';
 
 interface AddEditAccountModalProps {
@@ -67,6 +68,8 @@ export function AddEditAccountModal({
         is_default: isDefault,
       });
       onClose();
+    } catch (err: any) {
+      toast.error('Account Save Failed', err.message || 'Could not save payment account.');
     } finally {
       setIsSubmitting(false);
     }
@@ -289,9 +292,10 @@ export function AddEditAccountModal({
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all hover:shadow-indigo-500/20 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-md transition-all hover:shadow-indigo-500/20 flex items-center gap-1.5 cursor-pointer"
             >
-              {isSubmitting ? 'Saving...' : editingAccount ? 'Update Account' : 'Save Account'}
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>{isSubmitting ? 'Saving...' : editingAccount ? 'Update Account' : 'Save Account'}</span>
             </button>
           </div>
         </form>

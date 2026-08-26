@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, Building, Tag, Percent } from 'lucide-react';
+import { X, CreditCard, Banknote, Building, Tag, Percent, Loader2 } from 'lucide-react';
 import { PaymentAccount } from '@/types/accounts';
 import { accountService } from '@/features/accounts/services/accountService';
 
@@ -45,9 +45,11 @@ export function POSBillingModal({
   const [custPhone, setCustPhone] = useState<string>(initPhone);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | ''>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
+      setIsSubmitting(false);
       accountService.getPaymentAccounts().then((accs) => {
         const active = accs.filter((a) => a.is_active);
         setPaymentAccounts(active);
@@ -67,17 +69,23 @@ export function POSBillingModal({
   const taxAmount = (taxableAmount * taxPct) / 100;
   const grandTotal = taxableAmount + taxAmount;
 
-  const handleApplyAndConfirm = (status: 'UNPAID' | 'PAID' | 'BILLED_TO_ROOM') => {
-    onUpdateBilling({
-      discountType: discType,
-      discountValue: discVal,
-      taxPercentage: taxPct,
-      paymentMethod: payMethod,
-      customerName: custName,
-      customerPhone: custPhone,
-    });
-    onConfirmOrder(status);
-    onClose();
+  const handleApplyAndConfirm = async (status: 'UNPAID' | 'PAID' | 'BILLED_TO_ROOM') => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      onUpdateBilling({
+        discountType: discType,
+        discountValue: discVal,
+        taxPercentage: taxPct,
+        paymentMethod: payMethod,
+        customerName: custName,
+        customerPhone: custPhone,
+      });
+      await onConfirmOrder(status);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const paymentModes = [
@@ -259,8 +267,9 @@ export function POSBillingModal({
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-slate-100">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => handleApplyAndConfirm('UNPAID')}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Save as Unpaid
           </button>
@@ -268,18 +277,22 @@ export function POSBillingModal({
           {payMethod === 'ROOM_FOLIO' ? (
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => handleApplyAndConfirm('BILLED_TO_ROOM')}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-900 hover:bg-indigo-800 shadow-md shadow-indigo-900/20 transition-all"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-900 hover:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-indigo-900/20 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              Post to Room Folio
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>{isSubmitting ? 'Posting...' : 'Post to Room Folio'}</span>
             </button>
           ) : (
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => handleApplyAndConfirm('PAID')}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              Pay Now & Complete
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>{isSubmitting ? 'Processing...' : 'Pay Now & Complete'}</span>
             </button>
           )}
         </div>

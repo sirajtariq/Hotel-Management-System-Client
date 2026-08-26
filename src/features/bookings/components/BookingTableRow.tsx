@@ -27,10 +27,10 @@ export function BookingTableRow({
   onRecordPayment,
   onPrintInvoice,
 }: BookingTableRowProps) {
-  const guestName = booking?.guest?.fullName || (booking as any)?.guest_name || 'Guest';
-  const guestPhone = booking?.guest?.phone || (booking as any)?.guest_phone || 'N/A';
-  const bookingRef = booking?.bookingReference || `BK-2026-${booking?.id || '000'}`;
-  const remainingAmt = booking?.remainingAmount || 0;
+  const guestName = booking?.guest?.fullName || (booking as any)?.guestName || (booking as any)?.guest_name || 'Guest';
+  const guestPhone = booking?.guest?.phone || (booking as any)?.guestPhone || (booking as any)?.guest_phone || 'N/A';
+  const bookingRef = booking?.bookingReference || booking?.invoiceNumber || (booking as any)?.invoice_number || `BK-2026-${booking?.id || '000'}`;
+  const remainingAmt = booking?.remainingAmount ?? (booking as any)?.remainingBalance ?? (booking as any)?.remaining_balance ?? Math.max(0, (booking?.totalAmount || 0) - (booking?.paidAmount || 0));
 
   return (
     <TableRow>

@@ -8,7 +8,7 @@ import { propertyService } from '@/features/properties/services/propertyService'
 import { Room } from '@/types/rooms';
 import { Property } from '@/types/properties';
 import { formatPKR, formatDate } from '@/lib/formatters';
-import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles } from 'lucide-react';
+import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CreateBookingModalProps {
@@ -184,45 +184,37 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       durationLabel = `${totalNights} Night${totalNights > 1 ? 's' : ''}`;
     }
 
-    const payload: CreateBookingInput = {
-      propertyId: selectedPropertyId,
-      roomId: selectedRoomId,
+    const cleanPayload: CreateBookingInput = {
+      propertyId: isNaN(Number(selectedPropertyId)) ? selectedPropertyId : Number(selectedPropertyId),
+      property: isNaN(Number(selectedPropertyId)) ? selectedPropertyId : Number(selectedPropertyId),
+      roomId: isNaN(Number(selectedRoomId)) ? selectedRoomId : Number(selectedRoomId),
+      room: isNaN(Number(selectedRoomId)) ? selectedRoomId : Number(selectedRoomId),
       guestName: guestName.trim(),
       guestEmail: guestEmail.trim() || undefined,
       guestPhone: guestPhone.trim(),
       cnicOrPassport: cnicOrPassport.trim() || undefined,
-      booking_type: bookingMode,
       bookingType: bookingMode,
-      checkInDate: checkInDate,
-      checkOutDate: checkOutDate,
-      check_in: checkInISO,
-      check_out: checkOutISO,
       checkIn: checkInISO,
       checkOut: checkOutISO,
-      total_duration: durationLabel,
+      checkInDate: checkInDate,
+      checkOutDate: checkOutDate,
       totalDuration: durationLabel,
       nightlyRate: bookingMode === 'NIGHTLY' ? defaultNightlyRate : undefined,
-      rate_applied: bookingMode === 'HOURLY' ? defaultHourlyRate : defaultNightlyRate,
       rateApplied: bookingMode === 'HOURLY' ? defaultHourlyRate : defaultNightlyRate,
-      subtotal_amount: subtotalAmount,
       subtotalAmount: subtotalAmount,
-      discount_type: discountType,
       discountType: discountType,
-      discount_value: discountValue,
       discountValue: discountValue,
-      discount_amount: discountAmount,
       discountAmount: discountAmount,
-      tax_rate: taxRate,
       taxRate: taxRate,
-      tax_amount: taxAmount,
       taxAmount: taxAmount,
       totalAmount: finalTotalAmount,
       initialPayment: initialPayment,
-      notes: notes,
+      paidAmount: initialPayment,
+      notes: notes.trim() || undefined,
     };
 
     try {
-      await onSubmit(payload);
+      await onSubmit(cleanPayload);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to create reservation.');
@@ -681,9 +673,16 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
               type="submit"
               size="sm"
               disabled={isSubmitting}
-              className="h-9 px-5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs"
+              className="h-9 px-5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {isSubmitting ? 'Confirming Reservation...' : 'Confirm Reservation'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Confirming Reservation...</span>
+                </>
+              ) : (
+                <span>Confirm Reservation</span>
+              )}
             </Button>
           </div>
         </form>

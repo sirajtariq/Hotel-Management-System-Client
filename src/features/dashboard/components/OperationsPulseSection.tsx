@@ -56,12 +56,12 @@ export function OperationsPulseSection({ pulse, onRefresh }: OperationsPulseSect
             </div>
           </div>
           <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {pulse.today_arrivals.length}
+            {(pulse?.today_arrivals || []).length}
           </span>
         </div>
 
         <div className="space-y-2.5 overflow-y-auto max-h-[320px] pr-1">
-          {pulse.today_arrivals.length === 0 ? (
+          {(!pulse?.today_arrivals || pulse.today_arrivals.length === 0) ? (
             <div className="py-10 text-center text-slate-400 text-xs space-y-1">
               <CheckCircle2 className="h-6 w-6 text-emerald-500 mx-auto opacity-80" />
               <p className="font-medium text-slate-600">No pending arrivals today</p>
@@ -125,12 +125,12 @@ export function OperationsPulseSection({ pulse, onRefresh }: OperationsPulseSect
             </div>
           </div>
           <span className="bg-blue-50 text-blue-700 border border-blue-200/80 text-xs font-bold px-2.5 py-0.5 rounded-full">
-            {pulse.today_departures.length}
+            {(pulse?.today_departures || []).length}
           </span>
         </div>
 
         <div className="space-y-2.5 overflow-y-auto max-h-[320px] pr-1">
-          {pulse.today_departures.length === 0 ? (
+          {(!pulse?.today_departures || pulse.today_departures.length === 0) ? (
             <div className="py-10 text-center text-slate-400 text-xs space-y-1">
               <CheckCircle2 className="h-6 w-6 text-blue-500 mx-auto opacity-80" />
               <p className="font-medium text-slate-600">No departures due today</p>

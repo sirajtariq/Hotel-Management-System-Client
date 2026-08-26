@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { RoomTypeItem, CreateRoomTypeInput } from '../services/roomService';
 import { Property } from '@/types/properties';
 import { formatPKR } from '@/lib/formatters';
-import { X, Moon, Clock, Users, Sparkles, Check, Building2, AlignLeft } from 'lucide-react';
+import { X, Moon, Clock, Users, Sparkles, Check, Building2, AlignLeft, Loader2 } from 'lucide-react';
+import { toast } from '@/components/ui/ToastProvider';
 import { cn } from '@/lib/utils';
 
 interface AddEditRoomCategoryModalProps {
@@ -96,6 +97,8 @@ export function AddEditRoomCategoryModal({
         amenities: selectedAmenities,
       });
       onClose();
+    } catch (err: any) {
+      toast.error('Category Save Failed', err.message || 'Could not save room category.');
     } finally {
       setIsSubmitting(false);
     }
@@ -352,9 +355,10 @@ export function AddEditRoomCategoryModal({
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs shadow-md transition-all hover:shadow-indigo-500/20 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-md transition-all hover:shadow-indigo-500/20 flex items-center gap-1.5 cursor-pointer"
             >
-              {isSubmitting ? 'Saving...' : editingType ? 'Save Category & Rates' : 'Create Room Category'}
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>{isSubmitting ? 'Saving...' : editingType ? 'Save Category & Rates' : 'Create Room Category'}</span>
             </button>
           </div>
         </form>

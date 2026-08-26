@@ -71,25 +71,17 @@ export const accountService = {
       const response = await apiClient.post('/payment-accounts/', input);
       return {
         ...response.data,
-        opening_balance: parseFloat(response.data.opening_balance || 0),
-        current_balance: parseFloat(response.data.current_balance || 0),
+        opening_balance: parseFloat(response.data.opening_balance || response.data.openingBalance || 0),
+        current_balance: parseFloat(response.data.current_balance || response.data.currentBalance || 0),
       };
-    } catch {
-      const newAcc: PaymentAccount = {
-        id: Date.now(),
-        name: input.name,
-        account_type: input.account_type,
-        bank_name: input.bank_name,
-        account_number: input.account_number,
-        iban: input.iban,
-        branch_name: input.branch_name,
-        opening_balance: input.opening_balance || 0,
-        current_balance: input.opening_balance || 0,
-        is_default: input.is_default || false,
-        is_active: true,
-      };
-      MOCK_ACCOUNTS.unshift(newAcc);
-      return newAcc;
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
     }
   },
 
@@ -98,17 +90,17 @@ export const accountService = {
       const response = await apiClient.patch(`/payment-accounts/${id}/`, input);
       return {
         ...response.data,
-        opening_balance: parseFloat(response.data.opening_balance || 0),
-        current_balance: parseFloat(response.data.current_balance || 0),
+        opening_balance: parseFloat(response.data.opening_balance || response.data.openingBalance || 0),
+        current_balance: parseFloat(response.data.current_balance || response.data.currentBalance || 0),
       };
-    } catch {
-      const idx = MOCK_ACCOUNTS.findIndex((a) => a.id === id);
-      if (idx !== -1) {
-        const updated = { ...MOCK_ACCOUNTS[idx], ...input };
-        MOCK_ACCOUNTS[idx] = updated as PaymentAccount;
-        return updated as PaymentAccount;
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
       }
-      return MOCK_ACCOUNTS[0];
+      throw err;
     }
   },
 

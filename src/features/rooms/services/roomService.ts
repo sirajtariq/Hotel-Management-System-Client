@@ -323,30 +323,24 @@ export const roomService = {
       const item = response.data;
       return {
         id: String(item.id),
-        propertyId: String(item.property || ''),
+        propertyId: String(item.property || item.propertyId || ''),
         name: item.name,
         code: item.code || '',
         description: item.description || '',
-        baseRate: parseFloat(item.base_price_per_night || '0'),
-        hourlyRate: parseFloat(item.hourly_rate || '0'),
+        baseRate: parseFloat(item.base_price_per_night || item.baseRate || '0'),
+        hourlyRate: parseFloat(item.hourly_rate || item.hourlyRate || '0'),
         is_hourly_allowed: item.is_hourly_allowed ?? true,
-        capacity: item.max_occupancy || 2,
+        capacity: item.max_occupancy || item.capacity || 2,
         amenities: item.amenities || [],
       };
-    } catch {
-      const newType: RoomTypeItem = {
-        id: `rt_${Date.now()}`,
-        name: input.name,
-        code: input.code || input.name.substring(0, 4).toUpperCase(),
-        description: input.description || '',
-        baseRate: input.base_price_per_night,
-        hourlyRate: input.hourly_rate || Math.round(input.base_price_per_night * 0.25),
-        is_hourly_allowed: input.is_hourly_allowed ?? true,
-        capacity: input.max_occupancy || 2,
-        amenities: input.amenities || [],
-      };
-      MOCK_ROOM_TYPES.unshift(newType);
-      return newType;
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
     }
   },
 
@@ -359,31 +353,20 @@ export const roomService = {
         name: item.name,
         code: item.code || '',
         description: item.description || '',
-        baseRate: parseFloat(item.base_price_per_night || '0'),
-        hourlyRate: parseFloat(item.hourly_rate || '0'),
+        baseRate: parseFloat(item.base_price_per_night || item.baseRate || '0'),
+        hourlyRate: parseFloat(item.hourly_rate || item.hourlyRate || '0'),
         is_hourly_allowed: item.is_hourly_allowed ?? true,
-        capacity: item.max_occupancy || 2,
+        capacity: item.max_occupancy || item.capacity || 2,
         amenities: item.amenities || [],
       };
-    } catch {
-      const targetIndex = MOCK_ROOM_TYPES.findIndex((rt) => String(rt.id) === String(id));
-      if (targetIndex !== -1) {
-        const existing = MOCK_ROOM_TYPES[targetIndex];
-        const updated: RoomTypeItem = {
-          ...existing,
-          name: input.name ?? existing.name,
-          code: input.code ?? existing.code,
-          description: input.description ?? existing.description,
-          baseRate: input.base_price_per_night ?? existing.baseRate,
-          hourlyRate: input.hourly_rate ?? existing.hourlyRate,
-          is_hourly_allowed: input.is_hourly_allowed ?? existing.is_hourly_allowed,
-          capacity: input.max_occupancy ?? existing.capacity,
-          amenities: input.amenities ?? existing.amenities,
-        };
-        MOCK_ROOM_TYPES[targetIndex] = updated;
-        return updated;
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
       }
-      return MOCK_ROOM_TYPES[0];
+      throw err;
     }
   },
 
