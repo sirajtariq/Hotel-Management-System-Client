@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRestaurantMenu } from '../hooks/useRestaurantMenu';
-import { restaurantService, MenuItem, Category, MenuItemVariation } from '../services/restaurantService';
-import { RestaurantHeaderNav } from '../components/RestaurantHeaderNav';
+import { restaurantService, MenuItem } from '../services/restaurantService';
 import { BookOpen, Plus, Search, Layers, ToggleLeft, ToggleRight, Trash2, Edit, X } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 import { TablePagination } from '@/components/ui/TablePagination';
@@ -118,10 +117,7 @@ export function MenuCatalogPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
-      {/* Top Restaurant Navigation Bar */}
-      <RestaurantHeaderNav />
-
+    <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">

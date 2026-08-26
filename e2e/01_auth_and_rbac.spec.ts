@@ -36,10 +36,10 @@ test.describe('01. Authentication & Multi-Tenant RBAC Security Boundaries', () =
     // Permitted items
     await expect(sidebar.locator('a', { hasText: 'Dashboard' })).toBeVisible();
     await expect(sidebar.locator('a', { hasText: 'Bookings' })).toBeVisible();
-    await expect(sidebar.locator('a', { hasText: 'Rooms' })).toBeVisible();
 
-    // Forbidden items
-    await expect(sidebar.locator('a', { hasText: 'Roles & Access' })).toHaveCount(0);
+    // Forbidden items for receptionist (Administration Section)
+    await expect(sidebar.locator('a', { hasText: 'Administration Hub' })).toHaveCount(0);
+    await expect(sidebar.locator('a', { hasText: 'Roles & Permissions' })).toHaveCount(0);
   });
 
   test('1.4 Direct Route Protection & Access Denied Redirection', async ({ page }) => {
@@ -69,8 +69,27 @@ test.describe('01. Authentication & Multi-Tenant RBAC Security Boundaries', () =
     if (await impersonateBtn.isVisible()) {
       await impersonateBtn.click();
       await page.waitForURL('**/dashboard', { timeout: 15000 });
-      expect(page.url()).toContain('/dashboard');
     }
+  });
+
+  test('1.6 Administration Hub & Configuration Modules Access for Tenant Admin', async ({ page }) => {
+    await loginAs(page, 'tenant_admin');
+
+    // Sidebar Administration Section (Single Entry Link)
+    const sidebar = page.locator('aside').first();
+    await expect(sidebar.locator('a', { hasText: 'Administration' })).toBeVisible();
+
+    // Navigate to Administration Suite
+    await page.goto('/administration');
+    await expect(page.locator('main h1').first()).toContainText('Administration');
+
+    // Verify 6 Segmented Horizontal Tabs exist
+    await expect(page.locator('button', { hasText: 'Properties & Branches' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Rooms & Rates' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Staff & Payroll' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Roles & Access' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Account Heads' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Restaurant Master' })).toBeVisible();
   });
 
 });

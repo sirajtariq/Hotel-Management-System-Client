@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useRestaurantOrders } from '../hooks/useRestaurantOrders';
 import { KitchenOrderCard } from '../components/kitchen/KitchenOrderCard';
 import { KitchenKDSSkeleton } from '../components/skeletons/KitchenKDSSkeleton';
-import { RestaurantHeaderNav } from '../components/RestaurantHeaderNav';
 import { ChefHat, RefreshCw, Flame, CheckCircle2, Utensils } from 'lucide-react';
 
 export function KitchenDisplayPage() {
@@ -25,9 +24,6 @@ export function KitchenDisplayPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
-      {/* Top Restaurant Navigation Bar */}
-      <RestaurantHeaderNav />
-
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">

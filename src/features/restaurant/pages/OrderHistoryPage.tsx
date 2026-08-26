@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRestaurantOrders } from '../hooks/useRestaurantOrders';
 import { restaurantService, RestaurantOrder, ReceiptData } from '../services/restaurantService';
-import { RestaurantHeaderNav } from '../components/RestaurantHeaderNav';
 import { Receipt, Search, Printer, RefreshCw, X } from 'lucide-react';
 import { KitchenReceiptPrint } from '../components/print/KitchenReceiptPrint';
 import { CustomerBillPrint } from '../components/print/CustomerBillPrint';
@@ -46,9 +45,6 @@ export function OrderHistoryPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
-      {/* Top Restaurant Navigation Bar */}
-      <RestaurantHeaderNav />
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useDiningTables } from '../hooks/useDiningTables';
-import { restaurantService, DiningTable } from '../services/restaurantService';
-import { RestaurantHeaderNav } from '../components/RestaurantHeaderNav';
+import { restaurantService } from '../services/restaurantService';
 import { Grid3X3, Plus, Users, LayoutGrid, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/ToastProvider';
@@ -58,10 +57,7 @@ export function TableManagementPage() {
   const sections = Array.from(new Set(tables.map((t) => t.floor_or_section || 'Ground Floor')));
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
-      {/* Top Restaurant Navigation Bar */}
-      <RestaurantHeaderNav />
-
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">

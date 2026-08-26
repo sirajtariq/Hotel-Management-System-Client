@@ -1,6 +1,24 @@
 import { apiClient } from '@/lib/axios';
 import { Room, RoomStatus, HousekeepingStatus, CreateRoomInput } from '@/types/rooms';
 
+export interface RoomTypeItem {
+  id: string | number;
+  name: string;
+  code?: string;
+  description?: string;
+  baseRate: number;
+  hourlyRate?: number;
+  capacity: number;
+}
+
+const MOCK_ROOM_TYPES: RoomTypeItem[] = [
+  { id: 'rt_1', name: 'Standard Single / Double', code: 'STD', description: 'Cozy room with single/double bed options, AC & high-speed Wi-Fi.', baseRate: 18000, hourlyRate: 4500, capacity: 2 },
+  { id: 'rt_2', name: 'Deluxe King Room', code: 'DLX', description: 'Spacious deluxe room with King size bed, balcony and luxury amenities.', baseRate: 28000, hourlyRate: 7000, capacity: 2 },
+  { id: 'rt_3', name: 'Executive Suite', code: 'EXEC', description: 'Premium suite with separate living area, work desk and executive lounge access.', baseRate: 45000, hourlyRate: 11250, capacity: 3 },
+  { id: 'rt_4', name: 'Family Suite', code: 'FAM', description: '2-Bedroom suite designed for family stays with kitchenette & seating lounge.', baseRate: 52000, hourlyRate: 13000, capacity: 4 },
+  { id: 'rt_5', name: 'Penthouse Suite', code: 'PENT', description: 'Luxury top-floor penthouse with private dip pool, butler service & panoramic views.', baseRate: 125000, hourlyRate: 30000, capacity: 6 },
+];
+
 const MOCK_ROOMS: Room[] = [
   // Floor 1
   {
@@ -318,6 +336,27 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const roomService = {
+  async getRoomTypes(): Promise<RoomTypeItem[]> {
+    try {
+      const response = await apiClient.get('/rooms/types/');
+      const raw = extractArray<any>(response.data, []);
+      if (raw.length > 0) {
+        return raw.map((item) => ({
+          id: String(item.id),
+          name: item.name,
+          code: item.code || '',
+          description: item.description || '',
+          baseRate: parseFloat(item.base_price_per_night || item.baseRate || '0'),
+          hourlyRate: parseFloat(item.hourly_rate || item.hourlyRate || String(parseFloat(item.base_price_per_night || '0') * 0.25)),
+          capacity: item.max_occupancy || item.capacity || 2,
+        }));
+      }
+      return MOCK_ROOM_TYPES;
+    } catch {
+      return MOCK_ROOM_TYPES;
+    }
+  },
+
   async getRooms(propertyId?: string): Promise<Room[]> {
     try {
       const url = propertyId ? `/rooms/?property_id=${propertyId}` : '/rooms/';
@@ -368,4 +407,3 @@ export const roomService = {
     }
   },
 };
-
