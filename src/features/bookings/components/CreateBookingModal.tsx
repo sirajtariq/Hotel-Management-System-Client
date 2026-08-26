@@ -3,12 +3,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CreateBookingInput, BookingMode, DiscountType } from '@/types/bookings';
-import { roomService } from '@/features/rooms/services/roomService';
+import { roomService, AvailableRoomItem } from '@/features/rooms/services/roomService';
 import { propertyService } from '@/features/properties/services/propertyService';
-import { Room } from '@/types/rooms';
 import { Property } from '@/types/properties';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { formatPKR, formatDate } from '@/lib/formatters';
-import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles, Loader2 } from 'lucide-react';
+import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles, Loader2, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CreateBookingModalProps {
@@ -19,14 +19,19 @@ interface CreateBookingModalProps {
 }
 
 export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomId }: CreateBookingModalProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
+  const userAssignedPropId = (user as any)?.assignedPropertyId || (user as any)?.propertyId || (user as any)?.staffProfile?.propertyId;
+
   // Mode selection
   const [bookingMode, setBookingMode] = useState<BookingMode>('NIGHTLY');
 
   // Rooms & Properties list
   const [properties, setProperties] = useState<Property[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('prop_01');
+  const [availableRooms, setAvailableRooms] = useState<AvailableRoomItem[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+  const [isLoadingRooms, setIsLoadingRooms] = useState<boolean>(false);
 
   // Guest details
   const [guestName, setGuestName] = useState<string>('');
@@ -56,40 +61,62 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Load properties and rooms
+  // Load properties list & set initial property selection
   useEffect(() => {
-    const loadInitData = async () => {
+    const loadProperties = async () => {
       try {
-        const [propsList, roomsList] = await Promise.all([
-          propertyService.getProperties(),
-          roomService.getRooms(),
-        ]);
+        const propsList = await propertyService.getProperties();
         setProperties(propsList);
-        setRooms(roomsList);
 
-        if (preselectedRoomId) {
-          const matched = roomsList.find((r) => r.id === preselectedRoomId);
-          if (matched) {
-            setSelectedRoomId(matched.id);
-            setSelectedPropertyId(matched.propertyId);
-          }
-        } else if (roomsList.length > 0) {
-          setSelectedRoomId(roomsList[0].id);
-          setSelectedPropertyId(roomsList[0].propertyId);
+        if (!isAdmin && userAssignedPropId) {
+          setSelectedPropertyId(String(userAssignedPropId));
+        } else if (propsList.length > 0) {
+          setSelectedPropertyId(String(propsList[0].id));
         }
       } catch {
         // Fallback
       }
     };
     if (isOpen) {
-      loadInitData();
+      loadProperties();
     }
-  }, [isOpen, preselectedRoomId]);
+  }, [isOpen, isAdmin, userAssignedPropId]);
+
+  // Fetch available rooms on-demand whenever selectedPropertyId changes
+  useEffect(() => {
+    const fetchAvailable = async () => {
+      if (!isOpen || !selectedPropertyId) return;
+      setIsLoadingRooms(true);
+      try {
+        const availList = await roomService.getAvailableRooms(selectedPropertyId);
+        setAvailableRooms(availList);
+
+        if (preselectedRoomId) {
+          const matched = availList.find((r) => String(r.id) === String(preselectedRoomId));
+          if (matched) {
+            setSelectedRoomId(String(matched.id));
+          } else if (availList.length > 0) {
+            setSelectedRoomId(String(availList[0].id));
+          }
+        } else if (availList.length > 0) {
+          setSelectedRoomId(String(availList[0].id));
+        } else {
+          setSelectedRoomId('');
+        }
+      } catch {
+        setAvailableRooms([]);
+        setSelectedRoomId('');
+      } finally {
+        setIsLoadingRooms(false);
+      }
+    };
+    fetchAvailable();
+  }, [isOpen, selectedPropertyId, preselectedRoomId]);
 
   // Currently selected room object
   const selectedRoom = useMemo(() => {
-    return rooms.find((r) => r.id === selectedRoomId) || rooms[0] || null;
-  }, [rooms, selectedRoomId]);
+    return availableRooms.find((r) => String(r.id) === String(selectedRoomId)) || availableRooms[0] || null;
+  }, [availableRooms, selectedRoomId]);
 
   // Hourly end time auto-calculation
   const calculatedEndTime = useMemo(() => {
@@ -111,8 +138,8 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   }, [checkInDate, checkOutDate]);
 
   // Auto-computed Total, Subtotal, Discount, Tax & Rates
-  const defaultNightlyRate = selectedRoom?.base_price || 15000;
-  const defaultHourlyRate = selectedRoom?.hourly_rate || Math.round(defaultNightlyRate / 6);
+  const defaultNightlyRate = selectedRoom?.basePrice || 15000;
+  const defaultHourlyRate = selectedRoom?.hourlyRate || Math.round(defaultNightlyRate / 6);
 
   const subtotalAmount = useMemo(() => {
     if (bookingMode === 'HOURLY') {
@@ -324,20 +351,50 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
             </div>
           </div>
 
-          {/* Room Selection */}
-          <div className="space-y-1 pt-1">
-            <label className="text-xs font-semibold text-slate-700">Room Unit Selection *</label>
-            <select
-              value={selectedRoomId}
-              onChange={(e) => setSelectedRoomId(e.target.value)}
-              className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  Room {r.roomNumber} — {r.room_type_name} ({formatPKR(r.base_price)}/nt | {formatPKR(r.hourly_rate)}/hr)
-                </option>
-              ))}
-            </select>
+          {/* Property & Room Selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                <span>Property *</span>
+                {!isAdmin && (
+                  <span className="text-[10px] text-slate-400 font-normal">(Assigned)</span>
+                )}
+              </label>
+              <select
+                value={selectedPropertyId}
+                disabled={!isAdmin && properties.length <= 1}
+                onChange={(e) => setSelectedPropertyId(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-75 disabled:cursor-not-allowed"
+              >
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                <span>Available Room *</span>
+                {isLoadingRooms && <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />}
+              </label>
+              <select
+                value={selectedRoomId}
+                onChange={(e) => setSelectedRoomId(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                {availableRooms.length === 0 ? (
+                  <option value="">No available rooms in property</option>
+                ) : (
+                  availableRooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      Room {r.roomNumber} — {r.roomTypeName} ({formatPKR(r.basePrice)}/nt)
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
           {/* Conditional Mode Form Controls */}

@@ -1,58 +1,7 @@
 import { apiClient } from '@/lib/axios';
 import { Booking, BookingStatus, CreateBookingInput, RecordPaymentInput } from '@/types/bookings';
 
-const MOCK_BOOKINGS: Booking[] = [
-  {
-    id: 'bk_1001',
-    bookingReference: 'BK-2026-881',
-    tenantId: 'tenant_01',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomId: 'rm_102',
-    roomNumber: '102 (Suite)',
-    guest: {
-      id: 'gst_01',
-      fullName: 'Muhammad Tariq',
-      email: 'tariq@gmail.com',
-      phone: '+92 300 1234567',
-      cnicOrPassport: '42201-1234567-1',
-    },
-    checkInDate: '2026-08-20',
-    checkOutDate: '2026-08-25',
-    totalNights: 5,
-    totalAmount: 225000,
-    paidAmount: 150000,
-    remainingAmount: 75000,
-    status: 'checked_in',
-    paymentStatus: 'partial',
-    createdAt: '2026-08-18',
-  },
-  {
-    id: 'bk_1002',
-    bookingReference: 'BK-2026-882',
-    tenantId: 'tenant_01',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomId: 'rm_201',
-    roomNumber: '201 (Penthouse)',
-    guest: {
-      id: 'gst_02',
-      fullName: 'Dr. Ayesha Rehman',
-      email: 'ayesha.rehman@hospital.org',
-      phone: '+92 321 9876543',
-      cnicOrPassport: '35202-9876543-2',
-    },
-    checkInDate: '2026-08-22',
-    checkOutDate: '2026-08-24',
-    totalNights: 2,
-    totalAmount: 240000,
-    paidAmount: 240000,
-    remainingAmount: 0,
-    status: 'confirmed',
-    paymentStatus: 'paid',
-    createdAt: '2026-08-21',
-  },
-];
+
 
 function normalizeBooking(b: any): Booking {
   const total = parseFloat(b.totalAmount ?? b.total_amount ?? '0');

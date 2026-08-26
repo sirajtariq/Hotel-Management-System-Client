@@ -31,9 +31,10 @@ export function usePermission(permissionCode?: string | string[] | null) {
 
     const roleUpper = String(user.role || '').toUpperCase();
 
-    // SuperAdmin and TenantAdmin full bypass
+    // 👑 ABSOLUTE SUPERADMIN & TENANT ADMIN FULL BYPASS
     if (
-      (user as any).is_superuser ||
+      (user as any)?.is_superuser ||
+      (user as any)?.isSuperuser ||
       roleUpper === 'SUPERADMIN' ||
       roleUpper === 'SUPER_ADMIN' ||
       roleUpper === 'TENANT_ADMIN' ||
