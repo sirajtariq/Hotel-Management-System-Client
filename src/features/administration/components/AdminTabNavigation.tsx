@@ -5,6 +5,7 @@ import {
   Users,
   ShieldCheck,
   Tag,
+  CreditCard,
   Utensils,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ export type AdminTabType =
   | 'staff'
   | 'roles'
   | 'account-heads'
+  | 'accounts'
   | 'restaurant';
 
 interface AdminTabItem {
@@ -29,6 +31,7 @@ const ADMIN_TABS: AdminTabItem[] = [
   { id: 'staff', label: 'Staff & Payroll', icon: Users },
   { id: 'roles', label: 'Roles & Access', icon: ShieldCheck },
   { id: 'account-heads', label: 'Account Heads', icon: Tag },
+  { id: 'accounts', label: 'Payment Accounts', icon: CreditCard },
   { id: 'restaurant', label: 'Restaurant Master', icon: Utensils },
 ];
 

@@ -144,7 +144,7 @@ export function RoomTypeCard({
           <div className="bg-white rounded-lg p-2.5 border border-slate-200/50 shadow-2xs">
             <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1 flex items-center gap-1">
               <Moon className="h-3 w-3 text-indigo-600" />
-              <span>🌙 NIGHTLY STAY</span>
+              <span>NIGHTLY STAY</span>
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-sm font-extrabold text-slate-900 font-mono">
@@ -158,7 +158,7 @@ export function RoomTypeCard({
           <div className="bg-white rounded-lg p-2.5 border border-slate-200/50 shadow-2xs">
             <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1">
               <Clock className="h-3 w-3 text-amber-600" />
-              <span>⚡ HOURLY SHORT-STAY</span>
+              <span>HOURLY SHORT-STAY</span>
             </div>
             {isHourlyAllowed ? (
               <div className="flex items-baseline gap-1">
@@ -224,7 +224,7 @@ export function RoomTypeCard({
             onClick={() => onEdit(roomType)}
             className="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
           >
-            ✏️ Edit Rates
+            Edit Rates
           </button>
         </div>
       </div>

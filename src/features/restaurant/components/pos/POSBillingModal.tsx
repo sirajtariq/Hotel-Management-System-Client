@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Building, Tag, Percent } from 'lucide-react';
+import { PaymentAccount } from '@/types/accounts';
+import { accountService } from '@/features/accounts/services/accountService';
 
 interface POSBillingModalProps {
   isOpen: boolean;
@@ -41,6 +43,20 @@ export function POSBillingModal({
   const [payMethod, setPayMethod] = useState<string>(initPaymentMethod || 'CASH');
   const [custName, setCustName] = useState<string>(initName);
   const [custPhone, setCustPhone] = useState<string>(initPhone);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | ''>('');
+
+  useEffect(() => {
+    if (isOpen) {
+      accountService.getPaymentAccounts().then((accs) => {
+        const active = accs.filter((a) => a.is_active);
+        setPaymentAccounts(active);
+        const defAcc = active.find((a) => a.is_default);
+        if (defAcc) setSelectedAccountId(defAcc.id);
+        else if (active.length > 0) setSelectedAccountId(active[0].id);
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -71,7 +87,7 @@ export function POSBillingModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs font-sans">
       <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
@@ -194,6 +210,26 @@ export function POSBillingModal({
               })}
             </div>
           </div>
+
+          {/* Deposit Account */}
+          {payMethod !== 'ROOM_FOLIO' && (
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                Deposit To Payment Account
+              </label>
+              <select
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                {paymentAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Financial summary box */}
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1.5 text-xs">

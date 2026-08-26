@@ -8,6 +8,7 @@ import { RoomsAdminTab } from '../components/tabs/RoomsAdminTab';
 import { StaffAdminTab } from '../components/tabs/StaffAdminTab';
 import { RolesAdminTab } from '../components/tabs/RolesAdminTab';
 import { AccountHeadsAdminTab } from '../components/tabs/AccountHeadsAdminTab';
+import { AccountsAdminTab } from '../components/tabs/AccountsAdminTab';
 import { RestaurantAdminTab } from '../components/tabs/RestaurantAdminTab';
 
 const VALID_TABS: AdminTabType[] = [
@@ -16,6 +17,7 @@ const VALID_TABS: AdminTabType[] = [
   'staff',
   'roles',
   'account-heads',
+  'accounts',
   'restaurant',
 ];
 
@@ -33,7 +35,7 @@ export function AdministrationPage() {
       <div className="space-y-6 font-sans">
         <PageHeader
           title="Administration & Company Setup"
-          description="Centralized master configurations, property branches, staff roster, RBAC security roles, and restaurant catalogs"
+          description="Centralized master configurations, property branches, staff roster, RBAC security roles, payment accounts, and restaurant catalogs"
         />
 
         {/* Horizontal Segmented Tabs Navigation */}
@@ -46,6 +48,7 @@ export function AdministrationPage() {
           {activeTab === 'staff' && <StaffAdminTab />}
           {activeTab === 'roles' && <RolesAdminTab />}
           {activeTab === 'account-heads' && <AccountHeadsAdminTab />}
+          {activeTab === 'accounts' && <AccountsAdminTab />}
           {activeTab === 'restaurant' && <RestaurantAdminTab />}
         </div>
       </div>

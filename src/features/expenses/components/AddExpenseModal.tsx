@@ -3,7 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CreateExpenseInput, AccountHead, PaymentMethod } from '@/types/expenses';
+import { PaymentAccount } from '@/types/accounts';
 import { expenseService } from '../services/expenseService';
+import { accountService } from '@/features/accounts/services/accountService';
 import { propertyService } from '@/features/properties/services/propertyService';
 import { Property } from '@/types/properties';
 import { toast } from '@/components/ui/ToastProvider';
@@ -26,6 +28,8 @@ const PAYMENT_METHODS: { key: PaymentMethod; label: string; icon: any }[] = [
 export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }: AddExpenseModalProps) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | ''>('');
   const [isLoadingMeta, setIsLoadingMeta] = useState(false);
 
   // Form State
@@ -42,9 +46,10 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
   const loadMetadata = async () => {
     setIsLoadingMeta(true);
     try {
-      const [props, heads] = await Promise.all([
+      const [props, heads, accs] = await Promise.all([
         propertyService.getProperties(),
         expenseService.getAccountHeads(),
+        accountService.getPaymentAccounts(),
       ]);
       setProperties(props);
       if (props.length > 0) {
@@ -54,6 +59,13 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
       if (heads.length > 0) {
         const activeFirst = heads.find((h) => h.is_active);
         if (activeFirst) setAccountHeadId(activeFirst.id);
+      }
+      setPaymentAccounts(accs.filter((a) => a.is_active));
+      const defAcc = accs.find((a) => a.is_default && a.is_active);
+      if (defAcc) {
+        setSelectedAccountId(defAcc.id);
+      } else if (accs.length > 0) {
+        setSelectedAccountId(accs[0].id);
       }
     } catch {
       toast.error('Failed to load expense properties or Account Heads.');
@@ -225,6 +237,22 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
                 );
               })}
             </div>
+          </div>
+
+          {/* Paid From Payment Account */}
+          <div className="space-y-1">
+            <label className="block font-semibold text-slate-700">Paid From Account *</label>
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {paymentAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Paid To / Vendor & Receipt # */}
