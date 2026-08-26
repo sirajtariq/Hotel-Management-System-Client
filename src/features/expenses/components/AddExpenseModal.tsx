@@ -53,7 +53,7 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
       ]);
       setProperties(props);
       if (props.length > 0) {
-        setPropertyId(props[0].id);
+        setPropertyId(String(props[0].id));
       }
       setAccountHeads(heads.filter((h) => h.is_active));
       if (heads.length > 0) {

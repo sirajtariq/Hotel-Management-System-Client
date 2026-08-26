@@ -31,7 +31,7 @@ interface AddRoomModalProps {
 
 export function AddRoomModal({ isOpen, onClose, onSubmit, properties = [] }: AddRoomModalProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const defaultPropId = properties[0]?.id || '1';
+  const defaultPropId = properties[0]?.id ? String(properties[0].id) : '1';
 
   const {
     register,

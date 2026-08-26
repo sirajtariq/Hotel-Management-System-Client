@@ -45,7 +45,7 @@ export function AddEditRoomTypeModal({
 
   useEffect(() => {
     if (editingType) {
-      setPropertyId(editingType.propertyId || properties[0]?.id || '');
+      setPropertyId(String(editingType.propertyId || properties[0]?.id || ''));
       setName(editingType.name || '');
       setCode(editingType.code || '');
       setDescription(editingType.description || '');
@@ -55,7 +55,7 @@ export function AddEditRoomTypeModal({
       setHourlyRate(editingType.hourlyRate || Math.round((editingType.baseRate || 0) * 0.25));
       setSelectedAmenities(editingType.amenities || ['WiFi', 'AC']);
     } else {
-      setPropertyId(properties[0]?.id || '');
+      setPropertyId(properties[0]?.id ? String(properties[0].id) : '');
       setName('');
       setCode('');
       setDescription('');

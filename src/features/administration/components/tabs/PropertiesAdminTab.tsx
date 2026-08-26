@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { PropertyFilter } from '@/features/properties/components/PropertyFilter';
 import { PropertyGrid } from '@/features/properties/components/PropertyGrid';
-import { PropertyFormModal } from '@/features/properties/components/PropertyFormModal';
+import { AddEditPropertyModal } from '@/features/properties/components/AddEditPropertyModal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/button';
 import { Plus, Building } from 'lucide-react';
 import { propertyService } from '@/features/properties/services/propertyService';
 import { Can } from '@/lib/rbac';
 import { toast } from '@/components/ui/ToastProvider';
-import { Property, CreatePropertyInput } from '@/types/properties';
+import { Property } from '@/types/properties';
 
 export function PropertiesAdminTab() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -16,25 +16,42 @@ export function PropertiesAdminTab() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+
+  const fetchProperties = async () => {
+    setIsLoading(true);
+    try {
+      const data = await propertyService.getProperties();
+      setProperties(Array.isArray(data) ? data : []);
+    } catch {
+      setProperties([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setIsLoading(true);
-    propertyService
-      .getProperties()
-      .then((data) => {
-        setProperties(Array.isArray(data) ? data : []);
-      })
-      .finally(() => setIsLoading(false));
+    fetchProperties();
   }, []);
 
-  const handleAddProperty = async (data: CreatePropertyInput) => {
+  const handleEditProperty = (prop: Property) => {
+    setEditingProperty(prop);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteProperty = async (prop: Property) => {
     try {
-      const created = await propertyService.createProperty(data);
-      setProperties((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
-      toast.success('Property Registered', `Successfully created ${created.name}`);
+      await propertyService.deleteProperty(prop.id);
+      toast.success('Property Deleted', `Successfully deleted ${prop.name}`);
+      setProperties((prev) => prev.filter((item) => item.id !== prop.id));
     } catch {
-      toast.error('Action Failed', 'Could not create property. Please try again.');
+      toast.error('Action Failed', 'Could not delete property branch.');
     }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingProperty(null);
   };
 
   const safeProperties = Array.isArray(properties) ? properties : [];
@@ -45,7 +62,7 @@ export function PropertiesAdminTab() {
     const matchesSearch =
       nameStr.toLowerCase().includes(search.toLowerCase()) ||
       cityStr.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === 'all' || p.type === typeFilter;
+    const matchesType = typeFilter === 'all' || p.type === typeFilter || p.propertyType === typeFilter;
     return matchesSearch && matchesType;
   });
 
@@ -65,7 +82,10 @@ export function PropertiesAdminTab() {
         <Can permission="properties:manage">
           <Button
             size="sm"
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setEditingProperty(null);
+              setIsModalOpen(true);
+            }}
             className="gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-3.5 py-2 shadow-2xs cursor-pointer shrink-0"
           >
             <Plus className="h-4 w-4" />
@@ -100,13 +120,18 @@ export function PropertiesAdminTab() {
           ))}
         </div>
       ) : (
-        <PropertyGrid properties={filteredProperties} />
+        <PropertyGrid
+          properties={filteredProperties}
+          onEdit={handleEditProperty}
+          onDelete={handleDeleteProperty}
+        />
       )}
 
-      <PropertyFormModal
+      <AddEditPropertyModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddProperty}
+        onClose={handleModalClose}
+        onSuccess={fetchProperties}
+        propertyToEdit={editingProperty}
       />
     </div>
   );
