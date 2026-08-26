@@ -38,7 +38,7 @@ export function RestaurantAdminTab() {
             )}
           >
             <BookOpen className="h-3.5 w-3.5" />
-            <span>🍲 Menu Categories & Items</span>
+            <span>Menu Categories & Items</span>
           </button>
 
           <button
@@ -52,7 +52,7 @@ export function RestaurantAdminTab() {
             )}
           >
             <Grid3X3 className="h-3.5 w-3.5" />
-            <span>🪑 Dining Tables & Layout</span>
+            <span>Dining Tables & Layout</span>
           </button>
         </div>
       </div>
