@@ -5,11 +5,17 @@ import { ToastProvider } from '@/components/ui/ToastProvider';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { router } from '@/routes';
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
+      staleTime: 2 * 60 * 1000,       // 2 minutes before data is considered stale
+      gcTime: 10 * 60 * 1000,         // 10 minutes cache garbage collection time
+      refetchOnWindowFocus: false,    // Stop spamming backend on browser tab switch
+      refetchOnReconnect: true,       // Refetch cleanly if network disconnects and reconnects
+      retry: 1,                       // Retry failed requests once before showing error toast
+    },
+    mutations: {
+      retry: 0,                       // Never retry mutations automatically to prevent duplicate state changes
     },
   },
 });

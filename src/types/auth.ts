@@ -15,15 +15,41 @@ export interface UserCustomRole {
   is_system?: boolean;
 }
 
+export interface AssignedPropertyItem {
+  id: number | string;
+  name: string;
+  city: string;
+}
+
+export interface UserSession {
+  id: number | string;
+  username: string;
+  email: string;
+  fullName: string;
+  role: 'SUPERADMIN' | 'TENANT_ADMIN' | 'MANAGER' | 'STAFF' | UserRole;
+  isSuperuser: boolean;
+  tenant: number | string | null;
+  tenantName: string | null;
+  assignedProperties: AssignedPropertyItem[];
+  permissions: string[];
+}
+
 export interface User {
   id: string;
+  username?: string;
   email: string;
   firstName: string;
   lastName: string;
+  fullName?: string;
   role: UserRole;
+  isSuperuser?: boolean;
+  is_superuser?: boolean;
   tenantId: string;
+  tenant?: number | string | null;
   tenantName: string;
   availableTenants: Tenant[];
+  assignedProperties?: AssignedPropertyItem[];
+  assigned_properties?: AssignedPropertyItem[];
   custom_role?: UserCustomRole | null;
   custom_role_permissions?: string[];
   permissions?: string[];

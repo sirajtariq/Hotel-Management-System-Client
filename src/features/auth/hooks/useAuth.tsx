@@ -19,59 +19,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [activeTenant, setActiveTenant] = useState<Tenant | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isImpersonated, setIsImpersonated] = useState<boolean>(false);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('access_token');
-      const backupAuthStr = localStorage.getItem('superadmin_backup_auth');
-      
-      if (token) {
-        try {
-          const userData = await authService.getCurrentUser();
-          const isImp = Boolean(backupAuthStr || userData.is_impersonated);
-          setIsImpersonated(isImp);
-          setUser({ ...userData, is_impersonated: isImp });
-
-          const savedTenantId = localStorage.getItem('active_tenant_id');
-          const matchedTenant =
-            userData.availableTenants?.find((t) => t.id === savedTenantId) ||
-            userData.availableTenants?.[0] ||
-            null;
-
-          setActiveTenant(matchedTenant);
-        } catch {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('superadmin_backup_auth');
-          setIsImpersonated(false);
-        }
+  const getInitialUser = (): User | null => {
+    const saved = localStorage.getItem('user_session');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        localStorage.removeItem('user_session');
       }
-      setIsLoading(false);
-    };
-    initAuth();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    const data = await authService.login({ email, password });
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
-    localStorage.removeItem('superadmin_backup_auth');
-    setIsImpersonated(false);
-    setUser(data.user);
-    const tenant = data.user.availableTenants[0] || null;
-    setActiveTenant(tenant);
-    if (tenant) {
-      localStorage.setItem('active_tenant_id', tenant.id);
     }
+    return null;
   };
+
+  const initialUser = getInitialUser();
+  const [user, setUser] = useState<User | null>(initialUser);
+  const [activeTenant, setActiveTenant] = useState<Tenant | null>(() => {
+    if (initialUser && Array.isArray(initialUser.availableTenants) && initialUser.availableTenants.length > 0) {
+      const savedTenantId = localStorage.getItem('active_tenant_id');
+      return initialUser.availableTenants.find((t) => t.id === savedTenantId) || initialUser.availableTenants[0];
+    }
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    const token = localStorage.getItem('access_token');
+    if (token && initialUser) return false;
+    if (token) return true;
+    return false;
+  });
+  const [isImpersonated, setIsImpersonated] = useState<boolean>(() => {
+    return Boolean(localStorage.getItem('superadmin_backup_auth') || initialUser?.is_impersonated);
+  });
 
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_session');
     localStorage.removeItem('active_tenant_id');
     localStorage.removeItem('superadmin_backup_auth');
     setIsImpersonated(false);
@@ -79,11 +61,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setActiveTenant(null);
   };
 
+  useEffect(() => {
+    const syncAuthSession = async () => {
+      const token = localStorage.getItem('access_token');
+      const backupAuthStr = localStorage.getItem('superadmin_backup_auth');
+
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const userData = await authService.getCurrentUserSession();
+        const isImp = Boolean(backupAuthStr || userData.is_impersonated);
+        const updatedUser = { ...userData, is_impersonated: isImp };
+
+        setIsImpersonated(isImp);
+        setUser(updatedUser);
+        localStorage.setItem('user_session', JSON.stringify(updatedUser));
+
+        const savedTenantId = localStorage.getItem('active_tenant_id');
+        const matchedTenant =
+          updatedUser.availableTenants?.find((t) => t.id === savedTenantId) ||
+          updatedUser.availableTenants?.[0] ||
+          null;
+
+        setActiveTenant(matchedTenant);
+        if (matchedTenant) {
+          localStorage.setItem('active_tenant_id', matchedTenant.id);
+        }
+      } catch (err: any) {
+        if (err.response?.status === 401 || !localStorage.getItem('access_token')) {
+          logout();
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    syncAuthSession();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    const data = await authService.login({ email, password });
+    localStorage.setItem('access_token', data.access);
+    localStorage.setItem('refresh_token', data.refresh);
+    localStorage.setItem('user_session', JSON.stringify(data.user));
+    localStorage.removeItem('superadmin_backup_auth');
+    setIsImpersonated(false);
+    setUser(data.user);
+    const tenant = data.user.availableTenants?.[0] || null;
+    setActiveTenant(tenant);
+    if (tenant) {
+      localStorage.setItem('active_tenant_id', tenant.id);
+    }
+  };
+
   const impersonateTenant = async (tenantId: string) => {
     const currentAccess = localStorage.getItem('access_token');
     const currentRefresh = localStorage.getItem('refresh_token');
 
-    // Backup current SuperAdmin session
     if (currentAccess && user) {
       localStorage.setItem(
         'superadmin_backup_auth',
@@ -108,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     setUser(tenantUser);
+    localStorage.setItem('user_session', JSON.stringify(tenantUser));
     const impTenant: Tenant = {
       id: tenantId,
       name: impData.tenant_name || 'Tenant Hotel',
@@ -125,6 +163,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const backup = JSON.parse(backupAuthStr);
         localStorage.setItem('access_token', backup.access);
         localStorage.setItem('refresh_token', backup.refresh);
+        if (backup.user) {
+          localStorage.setItem('user_session', JSON.stringify(backup.user));
+        }
         if (backup.activeTenantId) {
           localStorage.setItem('active_tenant_id', backup.activeTenantId);
         }

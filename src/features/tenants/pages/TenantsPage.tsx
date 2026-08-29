@@ -25,6 +25,9 @@ import { TenantFormModal } from '../components/TenantFormModal';
 import { RecordPaymentModal } from '../components/RecordPaymentModal';
 import { TenantDetailModal } from '../components/TenantDetailModal';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useDebounce } from '@/hooks/useDebounce';
+import { toast } from '@/components/ui/ToastProvider';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export function TenantsPage() {
   const { impersonateTenant } = useAuth();
@@ -41,6 +44,7 @@ export function TenantsPage() {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 350);
   const [planFilter, setPlanFilter] = useState<string>('ALL');
   const [billingFilter, setBillingFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -51,6 +55,7 @@ export function TenantsPage() {
   const [paymentTenant, setPaymentTenant] = useState<TenantItem | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [tenantToDeleteId, setTenantToDeleteId] = useState<string | null>(null);
 
   // On-demand detail modal
   const [detailTenantId, setDetailTenantId] = useState<string | null>(null);
@@ -59,7 +64,7 @@ export function TenantsPage() {
     setIsLoading(true);
     try {
       const [tenantsRes, metricsData] = await Promise.all([
-        tenantService.getTenants({ page: currentPage, page_size: pageSize, search: searchQuery }),
+        tenantService.getTenants({ page: currentPage, page_size: pageSize, search: debouncedSearchQuery }),
         tenantService.getMetrics(),
       ]);
       setTenants(tenantsRes.items);
@@ -72,9 +77,14 @@ export function TenantsPage() {
     }
   };
 
+  // Reset page to 1 when debounced search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery]);
+
   useEffect(() => {
     fetchData();
-  }, [currentPage, pageSize, searchQuery]);
+  }, [currentPage, pageSize, debouncedSearchQuery]);
 
   const handleOpenCreateModal = () => {
     setEditingTenant(null);
@@ -121,14 +131,14 @@ export function TenantsPage() {
   const handleImpersonate = async (tenant: TenantItem) => {
     const activeState = tenant.is_active ?? (tenant as any).isActive ?? true;
     if (!activeState) {
-      alert('Cannot impersonate an inactive or suspended tenant account.');
+      toast.error('Cannot impersonate an inactive or suspended tenant account.');
       return;
     }
     setImpersonatingId(tenant.id);
     try {
       await impersonateTenant(tenant.id);
     } catch (err) {
-      alert('Failed to launch tenant impersonation session.');
+      toast.error('Failed to launch tenant impersonation session.');
     } finally {
       setImpersonatingId(null);
     }
@@ -145,16 +155,19 @@ export function TenantsPage() {
     }
   };
 
-  const handleDeleteTenant = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete/deactivate this tenant account? This action is restricted to SuperAdmin.')) {
-      return;
-    }
-    setDeletingId(id);
+  const handleDeleteTenant = (id: string) => {
+    setTenantToDeleteId(id);
+  };
+
+  const confirmDeleteTenant = async () => {
+    if (!tenantToDeleteId) return;
+    setDeletingId(tenantToDeleteId);
     try {
-      await tenantService.deleteTenant(id);
+      await tenantService.deleteTenant(tenantToDeleteId);
       await fetchData();
     } finally {
       setDeletingId(null);
+      setTenantToDeleteId(null);
     }
   };
 
@@ -667,6 +680,17 @@ export function TenantsPage() {
         onClose={() => setDetailTenantId(null)}
         tenantId={detailTenantId}
         onToggleStatus={handleToggleStatus}
+      />
+
+      <ConfirmModal
+        isOpen={!!tenantToDeleteId}
+        onClose={() => setTenantToDeleteId(null)}
+        onConfirm={confirmDeleteTenant}
+        title="Delete / Deactivate Tenant"
+        description="Are you sure you want to delete/deactivate this tenant account? This action is restricted to SuperAdmin."
+        confirmText="Delete Tenant"
+        variant="danger"
+        isLoading={!!deletingId}
       />
     </div>
   );

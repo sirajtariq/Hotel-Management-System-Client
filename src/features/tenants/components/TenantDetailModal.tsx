@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { TenantItem } from '@/types/tenants';
 import { tenantService } from '../services/tenantService';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { toast } from '@/components/ui/ToastProvider';
 
 interface TenantDetailModalProps {
   isOpen: boolean;
@@ -41,17 +42,15 @@ export function TenantDetailModal({
       const fetchDetail = async () => {
         setIsLoading(true);
         try {
-          const data = await tenantService.getTenant(tenantId);
+          const data = await tenantService.getTenantById(tenantId);
           setTenant(data);
-        } catch (err) {
-          console.error('Failed to fetch tenant details:', err);
+        } catch {
+          setTenant(null);
         } finally {
           setIsLoading(false);
         }
       };
       fetchDetail();
-    } else {
-      setTenant(null);
     }
   }, [isOpen, tenantId]);
 
@@ -64,7 +63,7 @@ export function TenantDetailModal({
     try {
       await impersonateTenant(tenant.id);
     } catch (err) {
-      alert('Failed to launch impersonation session.');
+      toast.error('Failed to launch impersonation session.');
     } finally {
       setIsImpersonating(false);
     }

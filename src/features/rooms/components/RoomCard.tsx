@@ -1,4 +1,4 @@
-import { BedDouble, Users, Clock, Moon } from 'lucide-react';
+import { BedDouble, Users, Clock, Moon, Sparkles } from 'lucide-react';
 import { RoomStatusBadge } from './RoomStatusBadge';
 import { RoomStatusDropdown } from './RoomStatusDropdown';
 import { Room, RoomStatus } from '@/types/rooms';
@@ -13,9 +13,16 @@ interface RoomCardProps {
 }
 
 export function RoomCard({ room, onStatusChange, onCardClick }: RoomCardProps) {
-  const roomTypeLabel = String(room?.room_type_name || room?.type || 'Standard Room').replace(/_/g, ' ');
-  const roomPrice = room?.base_price ?? room?.basePricePerNight ?? 0;
-  const hourlyRateVal = room?.hourly_rate ?? Math.round(roomPrice / 4);
+  const roomTypeLabel = String(
+    room?.room_type_name || (room as any)?.roomTypeName || room?.type || 'Standard Room'
+  ).replace(/_/g, ' ');
+
+  const nightlyRate = Number(room?.base_price ?? room?.basePricePerNight ?? (room as any)?.basePrice ?? 0);
+  const hourlyRate = Number(room?.hourly_rate ?? room?.hourlyRate ?? 0);
+  const isHourly = Boolean(room?.is_hourly_allowed ?? (room as any)?.isHourlyAllowed ?? true);
+
+  const maxOccupancy = room?.capacity || (room as any)?.max_occupancy || (room as any)?.maxOccupancy || 2;
+  const amenitiesList = Array.isArray(room?.amenities) ? room.amenities : [];
 
   const statusBorderColor: Record<string, string> = {
     AVAILABLE: 'border-l-emerald-500 hover:border-emerald-500 hover:bg-emerald-50/20',
@@ -64,14 +71,33 @@ export function RoomCard({ room, onStatusChange, onCardClick }: RoomCardProps) {
         </div>
 
         {/* Middle Row: Room Type Name & Capacity */}
-        <div>
+        <div className="space-y-1">
           <h3 className="text-xs font-bold text-slate-900 capitalize line-clamp-1 group-hover:text-indigo-900 transition-colors">
             {roomTypeLabel}
           </h3>
-          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium mt-1">
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium">
             <Users className="h-3.5 w-3.5 text-slate-400" />
-            <span>Max {room?.capacity || 2} Guests</span>
+            <span>Max {maxOccupancy} Guests</span>
           </div>
+
+          {/* Amenities Badges with +X counter */}
+          {amenitiesList.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1 pt-1">
+              {amenitiesList.slice(0, 3).map((amenity, idx) => (
+                <span
+                  key={idx}
+                  className="text-[9px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200/60"
+                >
+                  {amenity}
+                </span>
+              ))}
+              {amenitiesList.length > 3 && (
+                <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                  +{amenitiesList.length - 3} more
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -80,15 +106,15 @@ export function RoomCard({ room, onStatusChange, onCardClick }: RoomCardProps) {
         <div>
           <span className="text-[10px] uppercase font-bold text-slate-400 block">Nightly Rate</span>
           <span className="text-xs font-extrabold text-slate-900 font-mono">
-            {formatPKR(roomPrice)} <span className="text-[10px] text-slate-400 font-normal">/night</span>
+            {formatPKR(nightlyRate)} <span className="text-[10px] text-slate-400 font-normal">/night</span>
           </span>
         </div>
 
-        {room?.is_hourly_allowed !== false && (
+        {isHourly && hourlyRate > 0 && (
           <div className="text-right">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200/60 font-mono">
               <Clock className="h-2.5 w-2.5 text-amber-600" />
-              <span>{formatPKR(hourlyRateVal)}/hr</span>
+              <span>⚡ {formatPKR(hourlyRate)}/hr</span>
             </span>
           </div>
         )}

@@ -13,29 +13,54 @@ export interface AvailableRoomItem {
   isHourlyAllowed: boolean;
 }
 
+export interface RoomTypeSelectorItem {
+  id: number | string;
+  name: string;
+  basePricePerNight: number;
+  base_price_per_night: number;
+  basePrice: number;
+  hourlyRate?: number;
+  hourly_rate?: number;
+  isHourlyAllowed?: boolean;
+  is_hourly_allowed?: boolean;
+  maxOccupancy?: number;
+  max_occupancy?: number;
+  amenities?: string[];
+}
+
 export interface RoomTypeItem {
   id: string | number;
   propertyId?: string;
+  propertyName?: string;
   name: string;
   code?: string;
   description?: string;
+  basePrice: number;
   baseRate: number;
   hourlyRate?: number;
+  isHourlyAllowed?: boolean;
   is_hourly_allowed?: boolean;
   is_active?: boolean;
+  maxOccupancy: number;
   capacity: number;
   amenities?: string[];
 }
 
 export interface CreateRoomTypeInput {
-  propertyId?: string;
+  property?: number | string;
+  property_id?: number | string;
+  propertyId?: number | string;
   name: string;
   code?: string;
   description?: string;
   max_occupancy?: number;
-  base_price_per_night: number;
+  capacity?: number;
+  base_price_per_night?: number;
+  base_price?: number;
+  baseRate?: number;
   is_hourly_allowed?: boolean;
   hourly_rate?: number;
+  hourlyRate?: number;
   amenities?: string[];
 }
 
@@ -47,7 +72,7 @@ function normalizeRoom(r: any): Room {
 
   const hourlyRateVal = typeof r.hourly_rate !== 'undefined' && r.hourly_rate !== null
     ? parseFloat(r.hourly_rate)
-    : Math.round(price / 4);
+    : (typeof r.hourlyRate !== 'undefined' && r.hourlyRate !== null ? parseFloat(r.hourlyRate) : 0);
 
   const statusUpper = String(r.status || 'AVAILABLE').toUpperCase() as RoomStatus;
   const hkStatusUpper = String(r.housekeeping_status || 'CLEAN').toUpperCase() as HousekeepingStatus;
@@ -60,13 +85,13 @@ function normalizeRoom(r: any): Room {
     floor: r.floor ?? 1,
     room_type_name: roomTypeName,
     base_price: isNaN(price) ? 0 : price,
-    hourly_rate: isNaN(hourlyRateVal) ? 1000 : hourlyRateVal,
+    hourly_rate: isNaN(hourlyRateVal) ? 0 : hourlyRateVal,
     is_hourly_allowed: r.is_hourly_allowed ?? true,
     status: statusUpper,
     housekeeping_status: hkStatusUpper,
     current_guest_name: r.current_guest_name || null,
     active_booking_id: r.active_booking_id || null,
-    capacity: r.room_type_details?.max_occupancy || r.capacity || 2,
+    capacity: r.max_occupancy || r.room_type_details?.max_occupancy || r.capacity || 2,
     amenities: Array.isArray(r.amenities) ? r.amenities : [],
   };
 }
@@ -82,18 +107,57 @@ export const roomService = {
     try {
       const response = await apiClient.get('/rooms/types/');
       const raw = extractArray<any>(response.data, []);
-      return raw.map((item) => ({
-        id: String(item.id),
-        propertyId: String(item.property || item.property_id || ''),
-        name: item.name,
-        code: item.code || '',
-        description: item.description || '',
-        baseRate: parseFloat(item.base_price_per_night || item.baseRate || '0'),
-        hourlyRate: parseFloat(item.hourly_rate || item.hourlyRate || String(parseFloat(item.base_price_per_night || '0') * 0.25)),
-        is_hourly_allowed: item.is_hourly_allowed ?? true,
-        capacity: item.max_occupancy || item.capacity || 2,
-        amenities: Array.isArray(item.amenities) ? item.amenities : [],
-      }));
+      return raw.map((item) => {
+        const bPrice = parseFloat(item.basePrice ?? item.base_price ?? item.base_price_per_night ?? item.baseRate ?? '0');
+        const hRate = parseFloat(item.hourlyRate ?? item.hourly_rate ?? '0');
+        const isHourly = Boolean(item.isHourlyAllowed ?? item.is_hourly_allowed ?? false);
+        const maxOcc = item.maxOccupancy ?? item.max_occupancy ?? item.capacity ?? 2;
+
+        return {
+          id: String(item.id),
+          propertyId: String(item.property || item.property_id || item.propertyId || ''),
+          propertyName: item.propertyName || item.property_name || '',
+          name: item.name,
+          code: item.code || '',
+          description: item.description || '',
+          basePrice: isNaN(bPrice) ? 0 : bPrice,
+          baseRate: isNaN(bPrice) ? 0 : bPrice,
+          hourlyRate: isNaN(hRate) ? 0 : hRate,
+          isHourlyAllowed: isHourly,
+          is_hourly_allowed: isHourly,
+          maxOccupancy: maxOcc,
+          capacity: maxOcc,
+          amenities: Array.isArray(item.amenities) ? item.amenities : [],
+        };
+      });
+    } catch {
+      return [];
+    }
+  },
+
+  async getRoomTypeSelector(propertyId?: number | string): Promise<RoomTypeSelectorItem[]> {
+    try {
+      const params = propertyId && propertyId !== 'ALL' ? { propertyId } : {};
+      const response = await apiClient.get('/rooms/types/selector/', { params });
+      const raw = extractArray<any>(response.data, []);
+      return raw.map((item) => {
+        const baseP = parseFloat(item.base_price_per_night ?? item.basePricePerNight ?? item.basePrice ?? item.baseRate ?? '0');
+        const hourlyP = item.hourly_rate ?? item.hourlyRate;
+        return {
+          id: item.id,
+          name: item.name,
+          basePricePerNight: baseP,
+          base_price_per_night: baseP,
+          basePrice: baseP,
+          hourlyRate: typeof hourlyP !== 'undefined' && hourlyP !== null ? parseFloat(hourlyP) : undefined,
+          hourly_rate: typeof hourlyP !== 'undefined' && hourlyP !== null ? parseFloat(hourlyP) : undefined,
+          isHourlyAllowed: Boolean(item.is_hourly_allowed ?? item.isHourlyAllowed ?? true),
+          is_hourly_allowed: Boolean(item.is_hourly_allowed ?? item.isHourlyAllowed ?? true),
+          maxOccupancy: item.max_occupancy ?? item.maxOccupancy ?? 2,
+          max_occupancy: item.max_occupancy ?? item.maxOccupancy ?? 2,
+          amenities: Array.isArray(item.amenities) ? item.amenities : [],
+        };
+      });
     } catch {
       return [];
     }
@@ -101,21 +165,30 @@ export const roomService = {
 
   async createRoomType(input: CreateRoomTypeInput): Promise<RoomTypeItem> {
     try {
+      const pId = input.property ?? input.property_id ?? (input.propertyId ? Number(input.propertyId) : undefined);
+      const baseP = input.base_price_per_night ?? input.base_price ?? input.baseRate ?? 0;
+      const hourlyP = typeof input.hourly_rate !== 'undefined'
+        ? input.hourly_rate
+        : (typeof input.hourlyRate !== 'undefined' ? input.hourlyRate : Math.round(baseP * 0.25));
+
       const payload = {
+        property: pId,
+        property_id: pId,
+        propertyId: pId,
         name: input.name,
         code: input.code || input.name.substring(0, 4).toUpperCase(),
         description: input.description || '',
-        max_occupancy: input.max_occupancy || 2,
-        base_price_per_night: input.base_price_per_night,
+        max_occupancy: input.max_occupancy || input.capacity || 2,
+        base_price_per_night: baseP,
         is_hourly_allowed: input.is_hourly_allowed ?? true,
-        hourly_rate: input.hourly_rate || Math.round(input.base_price_per_night * 0.25),
+        hourly_rate: input.is_hourly_allowed === false ? 0 : hourlyP,
         amenities: input.amenities || [],
       };
       const response = await apiClient.post('/rooms/types/', payload);
       const item = response.data;
       return {
         id: String(item.id),
-        propertyId: String(item.property || item.propertyId || ''),
+        propertyId: String(item.property || item.property_id || item.propertyId || ''),
         name: item.name,
         code: item.code || '',
         description: item.description || '',
@@ -220,6 +293,10 @@ export const roomService = {
       }
       throw err;
     }
+  },
+
+  async deleteRoom(id: string | number): Promise<void> {
+    await apiClient.delete(`/rooms/${id}/`);
   },
 
   async getAvailableRooms(propertyId?: string | number): Promise<AvailableRoomItem[]> {

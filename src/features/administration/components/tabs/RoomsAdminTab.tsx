@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from '@/components/ui/ToastProvider';
 import { Grid3X3, Moon, Plus, Search, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export function RoomsAdminTab() {
   const [subTab, setSubTab] = useState<'rooms' | 'types'>('rooms');
@@ -23,6 +24,7 @@ export function RoomsAdminTab() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<RoomTypeItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string | number; name: string } | null>(null);
 
   const fetchRoomTypes = async () => {
     setIsLoadingTypes(true);
@@ -41,10 +43,8 @@ export function RoomsAdminTab() {
   };
 
   useEffect(() => {
-    if (subTab === 'types') {
-      fetchRoomTypes();
-    }
-  }, [subTab]);
+    fetchRoomTypes();
+  }, []);
 
   const handleOpenAddModal = () => {
     setEditingType(null);
@@ -72,14 +72,20 @@ export function RoomsAdminTab() {
     }
   };
 
-  const handleDeleteRoomType = async (id: string | number, name: string) => {
-    if (!confirm(`Are you sure you want to delete room category "${name}"?`)) return;
+  const handleDeleteRoomType = (id: string | number, name: string) => {
+    setDeleteTarget({ id, name });
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!deleteTarget) return;
     try {
-      await roomService.deleteRoomType(id);
-      setRoomTypes((prev) => prev.filter((item) => item.id !== id));
-      toast.success('Category Deleted', `Removed ${name}`);
+      await roomService.deleteRoomType(deleteTarget.id);
+      setRoomTypes((prev) => prev.filter((item) => item.id !== deleteTarget.id));
+      toast.success('Category Deleted', `Removed ${deleteTarget.name}`);
     } catch {
       toast.error('Delete Failed', 'Could not delete room category.');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -226,13 +232,22 @@ export function RoomsAdminTab() {
       {/* Sub-tab 2: Rooms Master Matrix */}
       {subTab === 'rooms' && <RoomsPage />}
 
-      {/* 2-Column Create / Edit Room Category Modal */}
       <AddEditRoomCategoryModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveRoomType}
         editingType={editingType}
         properties={properties}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteCategory}
+        title="Delete Room Category"
+        description={`Are you sure you want to delete room category "${deleteTarget?.name}"? This action cannot be undone.`}
+        confirmText="Delete Category"
+        variant="danger"
       />
     </div>
   );

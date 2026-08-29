@@ -7,6 +7,7 @@ import { StaffMember } from '@/types/staff';
 import { formatPKR } from '@/lib/formatters';
 import { Can } from '@/lib/rbac';
 import { TablePagination } from '@/components/ui/TablePagination';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 interface StaffDataTableProps {
   staffList: StaffMember[];
@@ -31,6 +32,7 @@ export function StaffDataTable({
   onResetPassword,
   onDelete,
 }: StaffDataTableProps) {
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   if (!staffList.length) {
     return (
       <div className="text-center py-12 bg-white rounded-xl border border-slate-200 shadow-xs">
@@ -136,11 +138,7 @@ export function StaffDataTable({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete ${staff.name}?`)) {
-                            onDelete(staff.id);
-                          }
-                        }}
+                        onClick={() => setDeleteTarget({ id: staff.id, name: staff.name })}
                         className="h-7 w-7 p-0 text-rose-600 hover:text-rose-900 hover:bg-rose-50"
                         title="Delete Employee"
                       >
@@ -161,6 +159,21 @@ export function StaffDataTable({
         pageSize={pageSize}
         onPageSizeChange={onPageSizeChange}
         totalItems={totalCount}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            onDelete(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Staff Member"
+        description={`Are you sure you want to delete ${deleteTarget?.name}? This action cannot be undone.`}
+        confirmText="Delete Staff"
+        variant="danger"
       />
     </div>
   );

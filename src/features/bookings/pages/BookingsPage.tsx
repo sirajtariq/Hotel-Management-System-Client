@@ -14,6 +14,7 @@ import { Can } from '@/lib/rbac';
 import { toast } from '@/components/ui/ToastProvider';
 import { Booking, BookingStatus, CreateBookingInput, RecordPaymentInput } from '@/types/bookings';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export function BookingsPage() {
   const { user, is_impersonated } = useAuth();
@@ -26,14 +27,20 @@ export function BookingsPage() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
   const [invoiceBooking, setInvoiceBooking] = useState<Booking | null>(null);
 
+  // Reset pagination back to Page 1 on search filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
   useEffect(() => {
     setIsLoading(true);
     bookingService
-      .getBookings({ page: currentPage, page_size: pageSize, search })
+      .getBookings({ page: currentPage, page_size: pageSize, search: debouncedSearch })
       .then((res) => {
         setBookings(res.items);
         setTotalCount(res.totalCount);
@@ -41,7 +48,7 @@ export function BookingsPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [currentPage, pageSize, search]);
+  }, [currentPage, pageSize, debouncedSearch]);
 
   const handleStatusChange = async (id: string, status: BookingStatus) => {
     if (isPureSuperAdmin) return;

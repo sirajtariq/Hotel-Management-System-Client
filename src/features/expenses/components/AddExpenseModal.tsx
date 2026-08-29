@@ -10,6 +10,7 @@ import { propertyService } from '@/features/properties/services/propertyService'
 import { Property } from '@/types/properties';
 import { toast } from '@/components/ui/ToastProvider';
 import { Banknote, CreditCard, Building2, Wallet, Plus, Tag, Calendar, Receipt, FileText, Loader2 } from 'lucide-react';
+import { usePropertySelector } from '@/features/properties/hooks/usePropertySelector';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ const PAYMENT_METHODS: { key: PaymentMethod; label: string; icon: any }[] = [
 ];
 
 export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }: AddExpenseModalProps) {
+  const { data: cachedProperties = [] } = usePropertySelector();
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
@@ -46,13 +49,13 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
   const loadMetadata = async () => {
     setIsLoadingMeta(true);
     try {
-      const [props, heads, accs] = await Promise.all([
-        propertyService.getProperties(),
+      const [heads, accs] = await Promise.all([
         expenseService.getAccountHeads(),
         accountService.getPaymentAccounts(),
       ]);
+      const props = cachedProperties.length > 0 ? (cachedProperties as Property[]) : await propertyService.getProperties();
       setProperties(props);
-      if (props.length > 0) {
+      if (props.length > 0 && !propertyId) {
         setPropertyId(String(props[0].id));
       }
       setAccountHeads(heads.filter((h) => h.is_active));
@@ -60,15 +63,12 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
         const activeFirst = heads.find((h) => h.is_active);
         if (activeFirst) setAccountHeadId(activeFirst.id);
       }
-      setPaymentAccounts(accs.filter((a) => a.is_active));
-      const defAcc = accs.find((a) => a.is_default && a.is_active);
-      if (defAcc) {
-        setSelectedAccountId(defAcc.id);
-      } else if (accs.length > 0) {
+      setPaymentAccounts(accs);
+      if (accs.length > 0) {
         setSelectedAccountId(accs[0].id);
       }
     } catch {
-      toast.error('Failed to load expense properties or Account Heads.');
+      toast.error('Load Error', 'Failed to load expense configuration.');
     } finally {
       setIsLoadingMeta(false);
     }

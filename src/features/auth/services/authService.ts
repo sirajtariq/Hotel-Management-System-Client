@@ -5,29 +5,44 @@ function normalizeUser(data: any): User {
   const userObj = data.user || data || {};
   const tenants = userObj.availableTenants || (userObj.tenant_details ? [{
     id: String(userObj.tenant_details.id || ''),
-    name: userObj.tenant_details.name || 'Main Tenant',
+    name: userObj.tenant_details.name || userObj.tenant_name || 'Main Tenant',
     code: userObj.tenant_details.code || 'MAIN',
     activePropertiesCount: 1
   }] : []);
 
   const customRoleData = userObj.custom_role || userObj.custom_role_details || null;
-  const extractedPerms: string[] = Array.isArray(customRoleData?.permissions)
+  const extractedPerms: string[] = Array.isArray(userObj.permissions)
+    ? userObj.permissions
+    : Array.isArray(customRoleData?.permissions)
     ? customRoleData.permissions
     : Array.isArray(userObj.custom_role_permissions)
     ? userObj.custom_role_permissions
-    : Array.isArray(userObj.permissions)
-    ? userObj.permissions
+    : [];
+
+  const fullName = userObj.fullName || userObj.full_name || `${userObj.first_name || userObj.firstName || ''} ${userObj.last_name || userObj.lastName || ''}`.trim() || userObj.username || 'User';
+
+  const assignedProps = Array.isArray(userObj.assignedProperties)
+    ? userObj.assignedProperties
+    : Array.isArray(userObj.assigned_properties)
+    ? userObj.assigned_properties
     : [];
 
   return {
     id: String(userObj.id || ''),
+    username: userObj.username || userObj.email || '',
     email: userObj.email || userObj.username || '',
     firstName: userObj.first_name || userObj.firstName || userObj.username || 'User',
     lastName: userObj.last_name || userObj.lastName || '',
+    fullName,
     role: userObj.role || 'TENANT_ADMIN',
+    isSuperuser: Boolean(userObj.isSuperuser || userObj.is_superuser || userObj.role === 'SUPERADMIN'),
+    is_superuser: Boolean(userObj.is_superuser || userObj.isSuperuser || userObj.role === 'SUPERADMIN'),
+    tenant: userObj.tenant || userObj.tenantId || null,
     tenantId: String(userObj.tenant || userObj.tenantId || tenants[0]?.id || ''),
-    tenantName: userObj.tenant_details?.name || tenants[0]?.name || 'Hotel Management System',
+    tenantName: userObj.tenantName || userObj.tenant_name || userObj.tenant_details?.name || tenants[0]?.name || 'Hotel Management System',
     availableTenants: Array.isArray(tenants) ? tenants : [],
+    assignedProperties: assignedProps,
+    assigned_properties: assignedProps,
     custom_role: customRoleData ? {
       id: String(customRoleData.id),
       name: customRoleData.name,
@@ -86,13 +101,25 @@ export function parseErrorMessage(errorData: any): string {
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post('/users/token/', {
-        username: credentials.email,
-        password: credentials.password,
-      });
+      let response;
+      try {
+        response = await apiClient.post('/auth/login/', {
+          username: credentials.email,
+          password: credentials.password,
+        });
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          response = await apiClient.post('/users/token/', {
+            username: credentials.email,
+            password: credentials.password,
+          });
+        } else {
+          throw err;
+        }
+      }
 
-      const access = response.data.access;
-      const refresh = response.data.refresh;
+      const access = response.data.access || response.data.tokens?.access;
+      const refresh = response.data.refresh || response.data.tokens?.refresh;
       const user = normalizeUser(response.data);
 
       return { access, refresh, user };
@@ -109,6 +136,19 @@ export const authService = {
   async getCurrentUser(): Promise<User> {
     const response = await apiClient.get('/users/me/');
     return normalizeUser(response.data);
+  },
+
+  async getCurrentUserSession(): Promise<User> {
+    try {
+      const response = await apiClient.get('/auth/me/');
+      return normalizeUser(response.data);
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        const response = await apiClient.get('/users/me/');
+        return normalizeUser(response.data);
+      }
+      throw err;
+    }
   },
 
   async updateProfile(data: { firstName: string; lastName: string; email: string; phoneNumber?: string }): Promise<User> {

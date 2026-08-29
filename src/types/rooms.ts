@@ -11,6 +11,7 @@ export interface Room {
   room_type_name: string;
   base_price: number;
   hourly_rate?: number;
+  hourlyRate?: number;
   is_hourly_allowed?: boolean;
   type?: RoomType;
   basePricePerNight?: number;
@@ -25,12 +26,22 @@ export interface Room {
 }
 
 export interface CreateRoomInput {
-  propertyId: string;
+  property?: number | string;
+  property_id?: number | string;
+  propertyId: string | number;
+  room_type?: number | string;
+  room_type_id?: number | string;
+  roomTypeId?: number | string;
   roomNumber: string;
+  room_number?: string;
   floor: number | string;
-  type: RoomType;
-  basePricePerNight: number;
-  capacity: number;
-  amenities: string[];
+  type?: RoomType;
+  basePricePerNight?: number;
+  base_price?: number;
+  capacity?: number;
+  max_occupancy?: number;
+  amenities?: string[];
+  status?: RoomStatus;
+  housekeepingStatus?: HousekeepingStatus;
+  housekeeping_status?: HousekeepingStatus;
 }
-

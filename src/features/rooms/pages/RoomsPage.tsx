@@ -80,6 +80,18 @@ export function RoomsPage() {
     }
   };
 
+  const handleDeleteRoom = async (roomId: string) => {
+    if (isPureSuperAdmin) return;
+    try {
+      await roomService.deleteRoom(roomId);
+      setRooms((prev) => (Array.isArray(prev) ? prev : []).filter((r) => r.id !== roomId));
+      setDetailsRoom(null);
+      toast.success('Room Deleted', 'Room unit deleted successfully');
+    } catch (err: any) {
+      toast.error('Delete Failed', err?.message || 'Could not delete room unit.');
+    }
+  };
+
   const safeRooms = Array.isArray(rooms) ? rooms : [];
 
   const filteredRooms = safeRooms.filter((r) => {
@@ -178,6 +190,7 @@ export function RoomsPage() {
           onClose={() => setDetailsRoom(null)}
           onStatusChange={handleStatusChange}
           onHousekeepingChange={handleHousekeepingChange}
+          onDeleteRoom={handleDeleteRoom}
         />
       </div>
     </PermissionGuard>

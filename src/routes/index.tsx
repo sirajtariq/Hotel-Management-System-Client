@@ -1,27 +1,30 @@
+import { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { SuperAdminRoute } from '@/components/layout/SuperAdminRoute';
 import { PermissionRoute } from '@/components/auth/PermissionRoute';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
-import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
-import { BookingsPage } from '@/features/bookings/pages/BookingsPage';
-import { ExpensesPage } from '@/features/expenses/pages/ExpensesPage';
-import { ReportsPage } from '@/features/reports/pages/ReportsPage';
+
+// Lazy-loaded feature pages
+const DashboardPage = lazy(() => import('@/features/dashboard/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const BookingsPage = lazy(() => import('@/features/bookings/pages/BookingsPage').then(m => ({ default: m.BookingsPage })));
+const ExpensesPage = lazy(() => import('@/features/expenses/pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
+const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 
 // Restaurant Operations Pages
-import { RestaurantPOSPage } from '@/features/restaurant/pages/RestaurantPOSPage';
-import { KitchenDisplayPage } from '@/features/restaurant/pages/KitchenDisplayPage';
-import { OrderHistoryPage } from '@/features/restaurant/pages/OrderHistoryPage';
+const RestaurantPOSPage = lazy(() => import('@/features/restaurant/pages/RestaurantPOSPage').then(m => ({ default: m.RestaurantPOSPage })));
+const KitchenDisplayPage = lazy(() => import('@/features/restaurant/pages/KitchenDisplayPage').then(m => ({ default: m.KitchenDisplayPage })));
+const OrderHistoryPage = lazy(() => import('@/features/restaurant/pages/OrderHistoryPage').then(m => ({ default: m.OrderHistoryPage })));
 
 // Single Canonical Administration Suite Page
-import { AdministrationPage } from '@/features/administration/pages/AdministrationPage';
+const AdministrationPage = lazy(() => import('@/features/administration/pages/AdministrationPage').then(m => ({ default: m.AdministrationPage })));
 
 // SuperAdmin & Profile Pages
-import { TenantsPage } from '@/features/tenants/pages/TenantsPage';
-import { PlatformAnalyticsPage } from '@/features/platform/pages/PlatformAnalyticsPage';
-import { SystemUsersPage } from '@/features/users/pages/SystemUsersPage';
-import { ProfilePage } from '@/features/profile/pages/ProfilePage';
+const TenantsPage = lazy(() => import('@/features/tenants/pages/TenantsPage').then(m => ({ default: m.TenantsPage })));
+const PlatformAnalyticsPage = lazy(() => import('@/features/platform/pages/PlatformAnalyticsPage').then(m => ({ default: m.PlatformAnalyticsPage })));
+const SystemUsersPage = lazy(() => import('@/features/users/pages/SystemUsersPage').then(m => ({ default: m.SystemUsersPage })));
+const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 export const router = createBrowserRouter([
   {

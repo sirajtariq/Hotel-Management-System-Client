@@ -11,6 +11,8 @@ import { formatPKR, formatDate } from '@/lib/formatters';
 import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles, Loader2, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { usePropertySelector } from '@/features/properties/hooks/usePropertySelector';
+
 interface CreateBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -22,6 +24,8 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const { user } = useAuth();
   const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
   const userAssignedPropId = (user as any)?.assignedPropertyId || (user as any)?.propertyId || (user as any)?.staffProfile?.propertyId;
+
+  const { data: cachedProperties = [] } = usePropertySelector();
 
   // Mode selection
   const [bookingMode, setBookingMode] = useState<BookingMode>('NIGHTLY');
@@ -61,26 +65,18 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Load properties list & set initial property selection
+  // Load properties list & set initial property selection via cached selector
   useEffect(() => {
-    const loadProperties = async () => {
-      try {
-        const propsList = await propertyService.getProperties();
-        setProperties(propsList);
-
-        if (!isAdmin && userAssignedPropId) {
-          setSelectedPropertyId(String(userAssignedPropId));
-        } else if (propsList.length > 0) {
-          setSelectedPropertyId(String(propsList[0].id));
-        }
-      } catch {
-        // Fallback
-      }
-    };
     if (isOpen) {
-      loadProperties();
+      const propsList = cachedProperties as Property[];
+      setProperties(propsList);
+      if (!isAdmin && userAssignedPropId) {
+        setSelectedPropertyId(String(userAssignedPropId));
+      } else if (propsList.length > 0) {
+        setSelectedPropertyId(String(propsList[0].id));
+      }
     }
-  }, [isOpen, isAdmin, userAssignedPropId]);
+  }, [isOpen, cachedProperties, isAdmin, userAssignedPropId]);
 
   // Fetch available rooms on-demand whenever selectedPropertyId changes
   useEffect(() => {

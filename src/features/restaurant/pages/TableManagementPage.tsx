@@ -4,6 +4,7 @@ import { restaurantService } from '../services/restaurantService';
 import { Grid3X3, Plus, Users, LayoutGrid, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/components/ui/ToastProvider';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export function TableManagementPage() {
   const { tables, loading, refetchTables } = useDiningTables();
@@ -12,6 +13,7 @@ export function TableManagementPage() {
   const [tableNumber, setTableNumber] = useState<string>('');
   const [capacity, setCapacity] = useState<number>(4);
   const [floorSection, setFloorSection] = useState<string>('Ground Floor');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; number: string } | null>(null);
 
   const handleAddTable = async () => {
     if (!tableNumber.trim()) {
@@ -43,14 +45,20 @@ export function TableManagementPage() {
     }
   };
 
-  const handleDeleteTable = async (id: number, number: string) => {
-    if (!confirm(`Are you sure you want to remove Table ${number}?`)) return;
+  const handleDeleteTable = (id: number, number: string) => {
+    setDeleteTarget({ id, number });
+  };
+
+  const confirmDeleteTable = async () => {
+    if (!deleteTarget) return;
     try {
-      await restaurantService.deleteDiningTable(id);
-      toast.success(`Table ${number} deleted.`);
+      await restaurantService.deleteDiningTable(deleteTarget.id);
+      toast.success(`Table ${deleteTarget.number} deleted.`);
       refetchTables();
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to delete table.');
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -218,6 +226,18 @@ export function TableManagementPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={confirmDeleteTable}
+          title="Delete Dining Table"
+          description={`Are you sure you want to remove Table ${deleteTarget.number}? This action cannot be undone.`}
+          confirmText="Delete Table"
+          variant="danger"
+        />
       )}
     </div>
   );

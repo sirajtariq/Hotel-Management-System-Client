@@ -3,6 +3,7 @@ import { RoomTypeItem, CreateRoomTypeInput } from '../services/roomService';
 import { Property } from '@/types/properties';
 import { X, Moon, Clock, Users, Sparkles, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from '@/components/ui/ToastProvider';
 
 interface AddEditRoomTypeModalProps {
   isOpen: boolean;
@@ -45,17 +46,19 @@ export function AddEditRoomTypeModal({
 
   useEffect(() => {
     if (editingType) {
-      setPropertyId(String(editingType.propertyId || properties[0]?.id || ''));
+      const pid = String(editingType.propertyId || (editingType as any).property_id || (editingType as any).property || properties[0]?.id || '');
+      setPropertyId(pid);
       setName(editingType.name || '');
       setCode(editingType.code || '');
       setDescription(editingType.description || '');
       setCapacity(editingType.capacity || 2);
-      setBaseRate(editingType.baseRate || 0);
+      setBaseRate(editingType.baseRate || (editingType as any).base_price_per_night || 0);
       setIsHourlyAllowed(editingType.is_hourly_allowed ?? true);
-      setHourlyRate(editingType.hourlyRate || Math.round((editingType.baseRate || 0) * 0.25));
+      setHourlyRate(editingType.hourlyRate || (editingType as any).hourly_rate || Math.round(((editingType.baseRate || (editingType as any).base_price_per_night || 0) * 0.25)));
       setSelectedAmenities(editingType.amenities || ['WiFi', 'AC']);
     } else {
-      setPropertyId(properties[0]?.id ? String(properties[0].id) : '');
+      const pid = properties[0]?.id ? String(properties[0].id) : '';
+      setPropertyId(pid);
       setName('');
       setCode('');
       setDescription('');
@@ -79,20 +82,31 @@ export function AddEditRoomTypeModal({
     e.preventDefault();
     if (!name.trim()) return;
 
+    const pIdVal = propertyId || (properties[0]?.id ? String(properties[0].id) : undefined);
+    const pIdNum = pIdVal ? Number(pIdVal) : undefined;
+
     setIsSubmitting(true);
     try {
       await onSave({
-        propertyId,
+        property: pIdNum,
+        property_id: pIdNum,
+        propertyId: pIdVal,
         name: name.trim(),
         code: code.trim() || name.substring(0, 4).toUpperCase(),
         description: description.trim(),
         max_occupancy: capacity,
+        capacity: capacity,
         base_price_per_night: baseRate,
+        base_price: baseRate,
+        baseRate: baseRate,
         is_hourly_allowed: isHourlyAllowed,
         hourly_rate: isHourlyAllowed ? hourlyRate : 0,
+        hourlyRate: isHourlyAllowed ? hourlyRate : 0,
         amenities: selectedAmenities,
       });
       onClose();
+    } catch (err: any) {
+      toast.error('Category Save Failed', err.message || 'Could not save room category.');
     } finally {
       setIsSubmitting(false);
     }
@@ -131,12 +145,13 @@ export function AddEditRoomTypeModal({
           {properties.length > 0 && (
             <div>
               <label className="block font-semibold uppercase text-slate-500 mb-1">
-                Linked Property Branch
+                Linked Property Branch *
               </label>
               <select
                 value={propertyId}
                 onChange={(e) => setPropertyId(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                required
               >
                 {properties.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -202,6 +217,7 @@ export function AddEditRoomTypeModal({
                 type="number"
                 min="1"
                 max="10"
+                step="1"
                 value={capacity}
                 onChange={(e) => setCapacity(parseInt(e.target.value) || 1)}
                 className="w-28 px-3 py-2 rounded-xl border border-slate-200 font-bold text-slate-900 text-xs"
@@ -221,10 +237,10 @@ export function AddEditRoomTypeModal({
                 type="number"
                 required
                 min="0"
-                step="500"
+                step="1"
                 value={baseRate}
                 onChange={(e) => {
-                  const val = parseFloat(e.target.value) || 0;
+                  const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value) || 0);
                   setBaseRate(val);
                   setHourlyRate(Math.round(val * 0.25));
                 }}
@@ -270,9 +286,12 @@ export function AddEditRoomTypeModal({
                 <input
                   type="number"
                   min="0"
-                  step="250"
+                  step="1"
                   value={hourlyRate}
-                  onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? 0 : Math.max(0, parseFloat(e.target.value) || 0);
+                    setHourlyRate(val);
+                  }}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white font-bold text-amber-900 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20"
                 />
               </div>
@@ -320,7 +339,7 @@ export function AddEditRoomTypeModal({
             <button
               type="submit"
               disabled={isSubmitting || !name.trim()}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs shadow-2xs transition-all"
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs shadow-2xs transition-all flex items-center gap-1.5"
             >
               {isSubmitting ? 'Saving...' : editingType ? 'Update Category' : 'Save Room Category'}
             </button>

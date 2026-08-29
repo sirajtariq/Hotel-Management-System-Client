@@ -4,11 +4,13 @@ import { restaurantService, MenuItem } from '../services/restaurantService';
 import { BookOpen, Plus, Search, Layers, ToggleLeft, ToggleRight, Trash2, Edit, X } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 import { TablePagination } from '@/components/ui/TablePagination';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export function MenuCatalogPage() {
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
 
   const { categories, menuItems, totalCount, loading, searchQuery, setSearchQuery, fetchCategories, fetchMenuItems, toggleAvailability } =
     useRestaurantMenu(selectedCatId || undefined, currentPage, pageSize);
@@ -105,14 +107,20 @@ export function MenuCatalogPage() {
     }
   };
 
-  const handleDeleteItem = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this menu item?')) return;
+  const handleDeleteItem = (id: number) => {
+    setDeleteItemId(id);
+  };
+
+  const confirmDeleteItem = async () => {
+    if (!deleteItemId) return;
     try {
-      await restaurantService.deleteMenuItem(id);
+      await restaurantService.deleteMenuItem(deleteItemId);
       toast.success('Menu item deleted.');
       fetchMenuItems();
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to delete menu item.');
+    } finally {
+      setDeleteItemId(null);
     }
   };
 
@@ -423,6 +431,16 @@ export function MenuCatalogPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={deleteItemId !== null}
+        onClose={() => setDeleteItemId(null)}
+        onConfirm={confirmDeleteItem}
+        title="Delete Menu Item"
+        description="Are you sure you want to delete this menu item? This action cannot be undone."
+        confirmText="Delete Item"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Property } from '@/types/properties';
 import { useNavigate } from 'react-router-dom';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 interface PropertyCardProps {
   property: Property;
@@ -15,16 +16,16 @@ interface PropertyCardProps {
 export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const handleDelete = async () => {
+  const confirmDelete = async () => {
     if (!onDelete) return;
-    if (window.confirm(`Are you sure you want to delete property branch "${property.name}"?`)) {
-      setIsDeleting(true);
-      try {
-        await onDelete(property);
-      } finally {
-        setIsDeleting(false);
-      }
+    setIsDeleting(true);
+    try {
+      await onDelete(property);
+    } finally {
+      setIsDeleting(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -76,7 +77,7 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={handleDelete}
+                onClick={() => setIsConfirmOpen(true)}
                 disabled={isDeleting}
                 className="h-7 w-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                 title="Delete Property Branch"
@@ -88,32 +89,32 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 space-y-4">
-        {/* Room Status Matrix Bar (4-grid strip) */}
-        <div className="grid grid-cols-4 gap-2 text-center p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+      <CardContent className="p-4 pt-3 space-y-3">
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-4 gap-2 text-center bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
           <div>
-            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total</div>
-            <div className="text-sm font-extrabold text-slate-900 font-mono tabular-nums mt-0.5">{total}</div>
+            <div className="text-[10px] uppercase font-bold text-slate-400">Total</div>
+            <div className="text-sm font-black text-slate-800 tabular-nums">{total}</div>
           </div>
           <div>
-            <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Booked</div>
-            <div className="text-sm font-extrabold text-emerald-700 font-mono tabular-nums mt-0.5">{booked}</div>
+            <div className="text-[10px] uppercase font-bold text-emerald-600">Booked</div>
+            <div className="text-sm font-black text-emerald-700 tabular-nums">{booked}</div>
           </div>
           <div>
-            <div className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Clean</div>
-            <div className="text-sm font-extrabold text-amber-700 font-mono tabular-nums mt-0.5">{cleaning}</div>
+            <div className="text-[10px] uppercase font-bold text-indigo-600">Available</div>
+            <div className="text-sm font-black text-indigo-700 tabular-nums">{free}</div>
           </div>
           <div>
-            <div className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Free</div>
-            <div className="text-sm font-extrabold text-blue-700 font-mono tabular-nums mt-0.5">{free}</div>
+            <div className="text-[10px] uppercase font-bold text-amber-600">Cleaning</div>
+            <div className="text-sm font-black text-amber-700 tabular-nums">{cleaning}</div>
           </div>
         </div>
 
-        {/* Financial & Occupancy Row */}
+        {/* Financial Metrics */}
         <div className="flex items-center justify-between pt-1 text-xs">
           <div>
-            <div className="text-[11px] text-slate-400 font-medium">Est. Monthly Revenue</div>
-            <div className="text-sm font-bold text-slate-900 font-mono tabular-nums mt-0.5">
+            <div className="text-[11px] text-slate-400 font-medium">Monthly Revenue</div>
+            <div className="text-sm font-black text-slate-900 font-mono tabular-nums mt-0.5">
               {formatPKR(revenue)}
             </div>
           </div>
@@ -137,6 +138,17 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
           <ArrowUpRight className="h-3.5 w-3.5 ml-auto text-indigo-400" />
         </Button>
       </CardContent>
+
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Property Branch"
+        description={`Are you sure you want to delete property branch "${property.name}"? This action cannot be undone.`}
+        confirmText="Delete Property"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </Card>
   );
 }

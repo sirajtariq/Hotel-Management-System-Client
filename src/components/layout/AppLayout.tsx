@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { ImpersonationBanner } from './ImpersonationBanner';
 import { SubscriptionAlertBanner } from './SubscriptionAlertBanner';
+import { PageLoader } from '@/components/common/PageLoader';
 
 export function AppLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,7 +19,9 @@ export function AppLayout() {
           <Navbar onMobileMenuToggle={() => setIsMobileMenuOpen(true)} />
           <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
-              <Outlet />
+              <Suspense fallback={<PageLoader />}>
+                <Outlet />
+              </Suspense>
             </div>
           </main>
         </div>
