@@ -57,9 +57,21 @@ export function RoomTypeCard({
   const [isActive, setIsActive] = useState(roomType.is_active !== false);
 
   const amenitiesList = Array.isArray(roomType.amenities) ? roomType.amenities : [];
-  const hourlyRateVal =
-    roomType.hourlyRate || Math.round((roomType.baseRate || 0) * 0.25);
-  const isHourlyAllowed = roomType.is_hourly_allowed !== false;
+  const baseRateVal = Number(
+    roomType.basePricePerNight ||
+    roomType.baseRate ||
+    roomType.basePrice ||
+    roomType.base_price_per_night ||
+    roomType.base_price ||
+    0
+  );
+
+  const hourlyRateVal = Number(
+    roomType.hourlyRate ||
+    roomType.hourly_rate ||
+    Math.round(baseRateVal * 0.25)
+  );
+  const isHourlyAllowed = roomType.is_hourly_allowed !== false && roomType.isHourlyAllowed !== false;
 
   const handleToggle = () => {
     const nextState = !isActive;
@@ -95,7 +107,7 @@ export function RoomTypeCard({
             {/* Max Capacity Badge */}
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/60 shadow-2xs">
               <Users className="h-3.5 w-3.5 text-slate-400" />
-              <span>Max {roomType.capacity || 2} Guests</span>
+              <span>Max {roomType.capacity || roomType.maxOccupancy || 2} Guests</span>
             </span>
 
             {/* Edit / Delete Icon Buttons */}
@@ -148,7 +160,7 @@ export function RoomTypeCard({
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-sm font-extrabold text-slate-900 font-mono">
-                {formatPKR(parseFloat(String(roomType.baseRate || 0)))}
+                {formatPKR(parseFloat(String(baseRateVal)))}
               </span>
               <span className="text-[11px] font-medium text-slate-500">/night</span>
             </div>

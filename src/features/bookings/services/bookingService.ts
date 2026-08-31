@@ -70,7 +70,7 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const bookingService = {
-  async getBookings(params?: { page?: number; page_size?: number; search?: string }): Promise<{ items: Booking[]; totalCount: number }> {
+  async getBookings(params?: { page?: number; page_size?: number; search?: string; status?: string }): Promise<{ items: Booking[]; totalCount: number }> {
     try {
       const response = await apiClient.get('/bookings/', { params });
       if (response.data && Array.isArray(response.data.results)) {
@@ -90,9 +90,69 @@ export const bookingService = {
     }
   },
 
+  async checkInBooking(id: string): Promise<Booking> {
+    try {
+      const response = await apiClient.post<any>(`/bookings/${id}/check-in/`);
+      if (response.data && response.data.status) {
+        return { id: String(id), status: response.data.status.toLowerCase() } as any;
+      }
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
 
+  async checkOutBooking(id: string): Promise<Booking> {
+    try {
+      const response = await apiClient.post<any>(`/bookings/${id}/check-out/`);
+      if (response.data && response.data.status) {
+        return { id: String(id), status: response.data.status.toLowerCase() } as any;
+      }
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
 
-  async updateBookingStatus(id: string, status: BookingStatus): Promise<Booking> {
+  async cancelBooking(id: string): Promise<Booking> {
+    try {
+      const response = await apiClient.post<Booking>(`/bookings/${id}/cancel/`);
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async updateBookingStatus(id: string, status: BookingStatus | string): Promise<Booking> {
+    const statusUpper = String(status).toUpperCase();
+    if (statusUpper === 'CHECKED_IN' || statusUpper === 'CHECK_IN') {
+      return this.checkInBooking(id);
+    }
+    if (statusUpper === 'CHECKED_OUT' || statusUpper === 'CHECK_OUT') {
+      return this.checkOutBooking(id);
+    }
+    if (statusUpper === 'CANCELLED' || statusUpper === 'CANCEL') {
+      return this.cancelBooking(id);
+    }
+
     try {
       const response = await apiClient.patch<Booking>(`/bookings/${id}/`, { status });
       return normalizeBooking(response.data);

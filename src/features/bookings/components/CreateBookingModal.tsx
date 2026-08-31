@@ -84,7 +84,11 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       if (!isOpen || !selectedPropertyId) return;
       setIsLoadingRooms(true);
       try {
-        const availList = await roomService.getAvailableRooms(selectedPropertyId);
+        const rawAvail = await roomService.getAvailableRooms(selectedPropertyId);
+        const availList = rawAvail.filter((r) => {
+          const hk = String((r as any).housekeepingStatus || (r as any).housekeeping_status || 'CLEAN').toUpperCase();
+          return hk !== 'DIRTY' && hk !== 'DIRTY_ROOM' && hk !== 'IN_PROGRESS' && hk !== 'CLEANING';
+        });
         setAvailableRooms(availList);
 
         if (preselectedRoomId) {
@@ -208,9 +212,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
     }
 
     const cleanPayload: CreateBookingInput = {
-      propertyId: isNaN(Number(selectedPropertyId)) ? selectedPropertyId : Number(selectedPropertyId),
       property: isNaN(Number(selectedPropertyId)) ? selectedPropertyId : Number(selectedPropertyId),
-      roomId: isNaN(Number(selectedRoomId)) ? selectedRoomId : Number(selectedRoomId),
       room: isNaN(Number(selectedRoomId)) ? selectedRoomId : Number(selectedRoomId),
       guestName: guestName.trim(),
       guestEmail: guestEmail.trim() || undefined,
@@ -219,19 +221,12 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       bookingType: bookingMode,
       checkIn: checkInISO,
       checkOut: checkOutISO,
-      checkInDate: checkInDate,
-      checkOutDate: checkOutDate,
       totalDuration: durationLabel,
-      nightlyRate: bookingMode === 'NIGHTLY' ? defaultNightlyRate : undefined,
       rateApplied: bookingMode === 'HOURLY' ? defaultHourlyRate : defaultNightlyRate,
-      subtotalAmount: subtotalAmount,
       discountType: discountType,
       discountValue: discountValue,
-      discountAmount: discountAmount,
       taxRate: taxRate,
-      taxAmount: taxAmount,
       totalAmount: finalTotalAmount,
-      initialPayment: initialPayment,
       paidAmount: initialPayment,
       notes: notes.trim() || undefined,
     };

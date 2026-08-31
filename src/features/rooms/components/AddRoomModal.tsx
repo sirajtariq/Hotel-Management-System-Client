@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Building2, BedDouble, Layers, Users, DollarSign, Sparkles, Loader2, Check } from 'lucide-react';
+import { AlertCircle, Building2, BedDouble, Layers, Users, DollarSign, Clock, Sparkles, Loader2, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,8 @@ export function AddRoomModal({ isOpen, onClose, onSubmit, properties: propProps 
   const [roomNumber, setRoomNumber] = useState<string>('101');
   const [floor, setFloor] = useState<string>('1');
   const [basePricePerNight, setBasePricePerNight] = useState<number>(15000);
+  const [hourlyRate, setHourlyRate] = useState<number>(0);
+  const [isHourlyAllowed, setIsHourlyAllowed] = useState<boolean>(true);
   const [capacity, setCapacity] = useState<number>(2);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(['WiFi', 'AC', 'King Bed']);
 
@@ -100,6 +102,12 @@ export function AddRoomModal({ isOpen, onClose, onSubmit, properties: propProps 
       setBasePricePerNight(rate);
       setCapacity(category.maxOccupancy || category.max_occupancy || 2);
 
+      const hAllowed = category.isHourlyAllowed ?? category.is_hourly_allowed ?? true;
+      setIsHourlyAllowed(hAllowed);
+
+      const hRate = category.hourlyRate ?? category.hourly_rate ?? (hAllowed ? Math.round(rate * 0.25) : 0);
+      setHourlyRate(hRate);
+
       // Inheritance Model: Auto-select category's default amenities chips
       if (category.amenities && category.amenities.length > 0) {
         setSelectedAmenities(category.amenities);
@@ -142,18 +150,12 @@ export function AddRoomModal({ isOpen, onClose, onSubmit, properties: propProps 
 
       const formattedData: CreateRoomInput = {
         property: pIdNum,
-        property_id: pIdNum,
-        propertyId: propertyId,
-        room_type: rTypeIdNum,
-        room_type_id: rTypeIdNum,
-        roomTypeId: selectedRoomTypeId,
+        roomType: rTypeIdNum,
         roomNumber: roomNumber.trim(),
-        room_number: roomNumber.trim(),
         floor: floor.trim() || '1',
-        basePricePerNight: basePricePerNight,
-        base_price: basePricePerNight,
-        capacity: capacity,
-        max_occupancy: capacity,
+        basePrice: basePricePerNight,
+        hourlyRate: isHourlyAllowed ? hourlyRate : 0,
+        isHourlyAllowed: isHourlyAllowed,
         status: 'AVAILABLE',
         housekeepingStatus: 'CLEAN',
         amenities: selectedAmenities,
@@ -278,8 +280,8 @@ export function AddRoomModal({ isOpen, onClose, onSubmit, properties: propProps 
             </div>
           </div>
 
-          {/* Rate per Night & Max Capacity */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Rate per Night, Hourly Rate & Max Capacity */}
+          <div className={cn("grid gap-3", isHourlyAllowed ? "grid-cols-3" : "grid-cols-2")}>
             <div className="space-y-1">
               <label className="font-semibold uppercase text-[11px] text-slate-600 flex items-center gap-1">
                 <DollarSign className="h-3.5 w-3.5 text-indigo-600" />
@@ -294,6 +296,23 @@ export function AddRoomModal({ isOpen, onClose, onSubmit, properties: propProps 
                 className="text-xs font-mono font-bold text-slate-900"
               />
             </div>
+
+            {isHourlyAllowed && (
+              <div className="space-y-1">
+                <label className="font-semibold uppercase text-[11px] font-bold text-amber-700 flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-amber-600" />
+                  <span>Hourly Rate (PKR)</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={hourlyRate}
+                  onChange={(e) => setHourlyRate(parseFloat(e.target.value) || 0)}
+                  className="text-xs font-mono font-bold text-slate-900 border-amber-300 focus:border-amber-500 bg-amber-50/30"
+                />
+              </div>
+            )}
 
             <div className="space-y-1">
               <label className="font-semibold uppercase text-[11px] text-slate-600 flex items-center gap-1">

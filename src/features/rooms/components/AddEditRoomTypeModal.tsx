@@ -52,9 +52,9 @@ export function AddEditRoomTypeModal({
       setCode(editingType.code || '');
       setDescription(editingType.description || '');
       setCapacity(editingType.capacity || 2);
-      setBaseRate(editingType.baseRate || (editingType as any).base_price_per_night || 0);
+      setBaseRate(editingType.baseRate || editingType.base_price_per_night || 0);
       setIsHourlyAllowed(editingType.is_hourly_allowed ?? true);
-      setHourlyRate(editingType.hourlyRate || (editingType as any).hourly_rate || Math.round(((editingType.baseRate || (editingType as any).base_price_per_night || 0) * 0.25)));
+      setHourlyRate(editingType.hourlyRate || editingType.hourly_rate || Math.round(((editingType.baseRate || editingType.base_price_per_night || 0) * 0.25)));
       setSelectedAmenities(editingType.amenities || ['WiFi', 'AC']);
     } else {
       const pid = properties[0]?.id ? String(properties[0].id) : '';
@@ -87,21 +87,15 @@ export function AddEditRoomTypeModal({
 
     setIsSubmitting(true);
     try {
-      await onSave({
+    await onSave({
         property: pIdNum,
-        property_id: pIdNum,
-        propertyId: pIdVal,
         name: name.trim(),
-        code: code.trim() || name.substring(0, 4).toUpperCase(),
+        code: code.trim() || name.toLowerCase().replace(/\s+/g, '-'),
         description: description.trim(),
         max_occupancy: capacity,
-        capacity: capacity,
         base_price_per_night: baseRate,
-        base_price: baseRate,
-        baseRate: baseRate,
         is_hourly_allowed: isHourlyAllowed,
         hourly_rate: isHourlyAllowed ? hourlyRate : 0,
-        hourlyRate: isHourlyAllowed ? hourlyRate : 0,
         amenities: selectedAmenities,
       });
       onClose();

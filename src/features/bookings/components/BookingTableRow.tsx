@@ -32,16 +32,22 @@ export function BookingTableRow({
   const bookingRef = booking?.bookingReference || booking?.invoiceNumber || (booking as any)?.invoice_number || `BK-2026-${booking?.id || '000'}`;
   const remainingAmt = booking?.remainingAmount ?? (booking as any)?.remainingBalance ?? (booking as any)?.remaining_balance ?? Math.max(0, (booking?.totalAmount || 0) - (booking?.paidAmount || 0));
 
+  const statusUpper = String(booking?.status || '').toUpperCase();
+  const isCanCheckIn = statusUpper === 'RESERVED' || statusUpper === 'CONFIRMED' || statusUpper === 'PENDING';
+  const isCheckedIn = statusUpper === 'CHECKED_IN' || statusUpper === 'CHECK_IN';
+  const isCheckedOut = statusUpper === 'CHECKED_OUT' || statusUpper === 'CHECK_OUT';
+  const isCancelled = statusUpper === 'CANCELLED' || statusUpper === 'CANCEL';
+
   return (
-    <TableRow>
+    <TableRow className="hover:bg-slate-50/70 transition-colors">
       <TableCell className="font-mono text-xs font-semibold text-slate-900">
         {bookingRef}
       </TableCell>
       <TableCell>
-        <div className="font-semibold text-slate-900">{guestName}</div>
+        <div className="font-bold text-slate-900 text-xs">{guestName}</div>
         <div className="text-[11px] text-slate-400 font-mono">{guestPhone}</div>
       </TableCell>
-      <TableCell className="text-xs font-medium text-slate-800">
+      <TableCell className="text-xs font-bold text-indigo-950 font-mono">
         {booking?.roomNumber || 'Room N/A'}
       </TableCell>
       <TableCell className="text-xs">
@@ -67,7 +73,7 @@ export function BookingTableRow({
       <TableCell className="font-mono tabular-nums">
         <div className="font-bold text-slate-900">{formatPKR(booking?.totalAmount || 0)}</div>
         {remainingAmt > 0 && (
-          <div className="text-[10px] text-rose-600 font-medium">Due: {formatPKR(remainingAmt)}</div>
+          <div className="text-[10px] text-rose-600 font-semibold">Due: {formatPKR(remainingAmt)}</div>
         )}
       </TableCell>
       <TableCell>
@@ -78,53 +84,80 @@ export function BookingTableRow({
       </TableCell>
 
       <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuLabel>Booking Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <Can permission="bookings:update">
-              <>
-                {booking.status === 'confirmed' && (
-                  <DropdownMenuItem onClick={() => onStatusChange(booking.id, 'checked_in')} className="gap-2 text-emerald-700">
-                    <LogIn className="h-3.5 w-3.5" />
-                    <span>Check In Guest</span>
-                  </DropdownMenuItem>
-                )}
-                {booking.status === 'checked_in' && (
-                  <DropdownMenuItem onClick={() => onStatusChange(booking.id, 'checked_out')} className="gap-2 text-slate-700">
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>Check Out Guest</span>
-                  </DropdownMenuItem>
-                )}
-              </>
-            </Can>
-            {booking.remainingAmount > 0 && (
-              <Can permission="bookings:record_payment">
-                <DropdownMenuItem onClick={() => onRecordPayment(booking)} className="gap-2 text-blue-700">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  <span>Record Payment</span>
-                </DropdownMenuItem>
-              </Can>
+        <div className="flex items-center justify-end gap-1.5">
+          <Can permission="bookings:update">
+            {isCanCheckIn && (
+              <Button
+                size="sm"
+                onClick={() => onStatusChange(booking.id, 'checked_in' as any)}
+                className="h-7 px-2.5 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-lg shadow-2xs cursor-pointer"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                Check In
+              </Button>
             )}
-            {booking.status !== 'cancelled' && booking.status !== 'checked_out' && (
-              <Can permission="bookings:cancel">
-                <DropdownMenuItem onClick={() => onStatusChange(booking.id, 'cancelled')} className="gap-2 text-rose-700">
-                  <XCircle className="h-3.5 w-3.5" />
-                  <span>Cancel Booking</span>
-                </DropdownMenuItem>
-              </Can>
+            {isCheckedIn && (
+              <Button
+                size="sm"
+                onClick={() => onStatusChange(booking.id, 'checked_out' as any)}
+                className="h-7 px-2.5 text-[11px] font-bold bg-indigo-900 hover:bg-indigo-950 text-white gap-1 rounded-lg shadow-2xs cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Check Out
+              </Button>
             )}
-            <DropdownMenuItem onClick={() => onPrintInvoice(booking)} className="gap-2">
-              <Printer className="h-3.5 w-3.5" />
-              <span>Print Invoice</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </Can>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-900">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 font-sans">
+              <DropdownMenuLabel className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Booking Actions
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <Can permission="bookings:update">
+                <>
+                  {isCanCheckIn && (
+                    <DropdownMenuItem onClick={() => onStatusChange(booking.id, 'checked_in' as any)} className="gap-2 text-emerald-700 font-semibold cursor-pointer">
+                      <LogIn className="h-3.5 w-3.5" />
+                      <span>Check In Guest</span>
+                    </DropdownMenuItem>
+                  )}
+                  {isCheckedIn && (
+                    <DropdownMenuItem onClick={() => onStatusChange(booking.id, 'checked_out' as any)} className="gap-2 text-indigo-700 font-semibold cursor-pointer">
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Check Out Guest</span>
+                    </DropdownMenuItem>
+                  )}
+                </>
+              </Can>
+              {remainingAmt > 0 && (
+                <Can permission="bookings:record_payment">
+                  <DropdownMenuItem onClick={() => onRecordPayment(booking)} className="gap-2 text-blue-700 font-semibold cursor-pointer">
+                    <DollarSign className="h-3.5 w-3.5" />
+                    <span>Record Payment</span>
+                  </DropdownMenuItem>
+                </Can>
+              )}
+              {!isCancelled && !isCheckedOut && (
+                <Can permission="bookings:cancel">
+                  <DropdownMenuItem onClick={() => onStatusChange(booking.id, 'cancelled' as any)} className="gap-2 text-rose-700 font-semibold cursor-pointer">
+                    <XCircle className="h-3.5 w-3.5" />
+                    <span>Cancel Booking</span>
+                  </DropdownMenuItem>
+                </Can>
+              )}
+              <DropdownMenuItem onClick={() => onPrintInvoice(booking)} className="gap-2 font-medium cursor-pointer">
+                <Printer className="h-3.5 w-3.5" />
+                <span>Print Invoice</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </TableCell>
     </TableRow>
   );

@@ -87,9 +87,9 @@ export interface BookingListItem {
 }
 
 export interface CreateBookingInput {
-  propertyId: number | string;
+  propertyId?: number | string;
   property?: number | string;
-  roomId: number | string;
+  roomId?: number | string;
   room?: number | string;
   guestName: string;
   guestEmail?: string;

@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/ToastProvider';
 import { Booking, BookingStatus, CreateBookingInput, RecordPaymentInput } from '@/types/bookings';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useDebounce } from '@/hooks/useDebounce';
+import { cn } from '@/lib/utils';
 
 export function BookingsPage() {
   const { user, is_impersonated } = useAuth();
@@ -28,19 +29,25 @@ export function BookingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
+  const [statusTab, setStatusTab] = useState<string>('ALL');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
   const [invoiceBooking, setInvoiceBooking] = useState<Booking | null>(null);
 
-  // Reset pagination back to Page 1 on search filter change
+  // Reset pagination back to Page 1 on search or status filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, statusTab]);
 
   useEffect(() => {
     setIsLoading(true);
     bookingService
-      .getBookings({ page: currentPage, page_size: pageSize, search: debouncedSearch })
+      .getBookings({
+        page: currentPage,
+        page_size: pageSize,
+        search: debouncedSearch,
+        status: statusTab !== 'ALL' ? statusTab : undefined,
+      })
       .then((res) => {
         setBookings(res.items);
         setTotalCount(res.totalCount);
@@ -48,16 +55,16 @@ export function BookingsPage() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [currentPage, pageSize, debouncedSearch]);
+  }, [currentPage, pageSize, debouncedSearch, statusTab]);
 
   const handleStatusChange = async (id: string, status: BookingStatus) => {
     if (isPureSuperAdmin) return;
     try {
       const updated = await bookingService.updateBookingStatus(id, status);
-      setBookings((prev) => (Array.isArray(prev) ? prev : []).map((b) => (b.id === id ? updated : b)));
-      toast.success('Reservation Updated', `Booking status changed to ${status.toUpperCase().replace('_', ' ')}`);
-    } catch {
-      toast.error('Update Failed', 'Could not update booking status.');
+      setBookings((prev) => (Array.isArray(prev) ? prev : []).map((b) => (b.id === id ? { ...b, ...updated } : b)));
+      toast.success('Reservation Updated', `Booking status changed to ${String(status).toUpperCase().replace('_', ' ')}`);
+    } catch (err: any) {
+      toast.error('Update Failed', err?.message || 'Could not update booking status.');
     }
   };
 
@@ -67,8 +74,8 @@ export function BookingsPage() {
       const created = await bookingService.createBooking(data);
       setBookings((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
       toast.success('Reservation Created', `Booking ${created.bookingReference || 'confirmed'}`);
-    } catch {
-      toast.error('Booking Failed', 'Could not create new reservation.');
+    } catch (err: any) {
+      toast.error('Booking Failed', err?.message || 'Could not create new reservation.');
     }
   };
 
@@ -82,6 +89,14 @@ export function BookingsPage() {
       toast.error('Payment Failed', 'Could not record payment transaction.');
     }
   };
+
+  const statusTabs = [
+    { label: 'All Bookings', value: 'ALL' },
+    { label: 'Reserved / Confirmed', value: 'RESERVED' },
+    { label: 'Checked In', value: 'CHECKED_IN' },
+    { label: 'Checked Out', value: 'CHECKED_OUT' },
+    { label: 'Cancelled', value: 'CANCELLED' },
+  ];
 
   return (
     <PermissionGuard permission="bookings:view" moduleName="Reservations & Bookings">
@@ -103,7 +118,7 @@ export function BookingsPage() {
           actions={
             !isPureSuperAdmin ? (
               <Can permission="bookings:create">
-                <Button size="sm" className="gap-1.5 text-xs bg-indigo-900 text-white hover:bg-indigo-950" onClick={() => setIsDrawerOpen(true)}>
+                <Button size="sm" className="gap-1.5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs cursor-pointer" onClick={() => setIsDrawerOpen(true)}>
                   <Plus className="h-3.5 w-3.5" />
                   New Reservation
                 </Button>
@@ -112,18 +127,50 @@ export function BookingsPage() {
           }
         />
 
-        <div className="flex items-center gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-xs mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search booking ref, guest name, or room..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-9 text-xs"
-            />
+        {/* Filter Controls: Realtime Search & Status Filter Tabs */}
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search by guest name, phone, room, or invoice ref..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-8 text-xs h-9 bg-slate-50/50 border-slate-200 focus:bg-white"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 font-sans">
+              {statusTabs.map((tab) => {
+                const isActive = statusTab === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setStatusTab(tab.value)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+                      isActive
+                        ? 'bg-indigo-900 text-white shadow-2xs'
+                        : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

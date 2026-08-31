@@ -79,9 +79,10 @@ export function RoomGridCard({ room, onSelectRoom }: RoomGridCardProps) {
           </span>
         );
       case 'IN_PROGRESS':
+      case 'CLEANING':
         return (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0">
-            • In Progress
+            • Cleaning
           </span>
         );
       case 'INSPECTED':

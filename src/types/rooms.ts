@@ -28,16 +28,22 @@ export interface Room {
 export interface CreateRoomInput {
   property?: number | string;
   property_id?: number | string;
-  propertyId: string | number;
+  propertyId?: string | number;
   room_type?: number | string;
   room_type_id?: number | string;
   roomTypeId?: number | string;
+  roomType?: number | string;
   roomNumber: string;
   room_number?: string;
   floor: number | string;
   type?: RoomType;
+  basePrice?: number;
   basePricePerNight?: number;
   base_price?: number;
+  hourlyRate?: number;
+  hourly_rate?: number;
+  isHourlyAllowed?: boolean;
+  is_hourly_allowed?: boolean;
   capacity?: number;
   max_occupancy?: number;
   amenities?: string[];

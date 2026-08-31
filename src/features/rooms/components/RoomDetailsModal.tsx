@@ -71,7 +71,7 @@ export const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-slate-900 text-base">Room #{room.roomNumber}</h3>
-                <RoomStatusBadge status={room.status} />
+                <RoomStatusBadge status={room.status} housekeepingStatus={room.housekeeping_status} />
               </div>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Floor {room.floor} • {room.propertyName || 'Pearl Continental'}
@@ -119,7 +119,7 @@ export const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
                   hkStatusColors[room.housekeeping_status || 'CLEAN'] || hkStatusColors.CLEAN
                 )}
               >
-                {room.housekeeping_status || 'CLEAN'}
+                {String(room.housekeeping_status).toUpperCase() === 'IN_PROGRESS' ? 'CLEANING' : (room.housekeeping_status || 'CLEAN')}
               </span>
             </div>
 
@@ -212,6 +212,30 @@ export const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
                 </div>
               </div>
             </div>
+          ) : isAvailable && (String(room.housekeeping_status).toUpperCase() === 'DIRTY' || String(room.housekeeping_status).toUpperCase() === 'DIRTY_ROOM') ? (
+            <div className="bg-rose-50/70 rounded-2xl p-4 border border-rose-200/80 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-bold shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h5 className="font-bold text-xs text-rose-950">Room Requires Housekeeping (Dirty)</h5>
+                <p className="text-[11px] text-rose-800 font-normal">
+                  This room is currently dirty. Housekeeping turnaround is required before front desk check-in.
+                </p>
+              </div>
+            </div>
+          ) : isAvailable && (String(room.housekeeping_status).toUpperCase() === 'IN_PROGRESS' || String(room.housekeeping_status).toUpperCase() === 'CLEANING') ? (
+            <div className="bg-amber-50/70 rounded-2xl p-4 border border-amber-200/80 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <h5 className="font-bold text-xs text-amber-950">Housekeeping Cleaning In-Progress</h5>
+                <p className="text-[11px] text-amber-800 font-normal">
+                  Housekeeping staff is currently cleaning this room unit.
+                </p>
+              </div>
+            </div>
           ) : isAvailable ? (
             <div className="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200/80 flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
@@ -248,6 +272,7 @@ export const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
             <div className="grid grid-cols-4 gap-1.5">
               {(['CLEAN', 'DIRTY', 'IN_PROGRESS', 'INSPECTED'] as HousekeepingStatus[]).map((hk) => {
                 const isSelected = room.housekeeping_status === hk;
+                const label = hk === 'IN_PROGRESS' || hk === 'in_progress' ? 'CLEANING' : hk.replace('_', ' ');
                 return (
                   <button
                     key={hk}
@@ -260,7 +285,7 @@ export const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     )}
                   >
-                    {hk.replace('_', ' ')}
+                    {label}
                   </button>
                 );
               })}

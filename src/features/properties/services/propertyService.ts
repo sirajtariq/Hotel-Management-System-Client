@@ -51,24 +51,62 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
   return fallback;
 }
 
+let propertiesCache: { data: Property[]; timestamp: number } | null = null;
+let pendingPropertiesPromise: Promise<Property[]> | null = null;
+
+let selectorCache: { data: PropertySelectorItem[]; timestamp: number } | null = null;
+let pendingSelectorPromise: Promise<PropertySelectorItem[]> | null = null;
+
 export const propertyService = {
-  async getProperties(): Promise<Property[]> {
-    try {
-      const response = await apiClient.get('/properties/');
-      const rawList = extractArray<any>(response.data, []);
-      return rawList.map(normalizeProperty);
-    } catch {
-      return [];
+  async getProperties(forceRefresh = false): Promise<Property[]> {
+    const now = Date.now();
+    if (!forceRefresh && propertiesCache && (now - propertiesCache.timestamp < 10000)) {
+      return propertiesCache.data;
     }
+    if (!forceRefresh && pendingPropertiesPromise) {
+      return pendingPropertiesPromise;
+    }
+
+    pendingPropertiesPromise = (async () => {
+      try {
+        const response = await apiClient.get('/properties/');
+        const rawList = extractArray<any>(response.data, []);
+        const result = rawList.map(normalizeProperty);
+        propertiesCache = { data: result, timestamp: Date.now() };
+        return result;
+      } catch {
+        return propertiesCache?.data || [];
+      } finally {
+        pendingPropertiesPromise = null;
+      }
+    })();
+
+    return pendingPropertiesPromise;
   },
 
-  async getPropertySelector(): Promise<PropertySelectorItem[]> {
-    try {
-      const response = await apiClient.get('/properties/selector/');
-      return extractArray<PropertySelectorItem>(response.data, []);
-    } catch {
-      return [];
+  async getPropertySelector(forceRefresh = false): Promise<PropertySelectorItem[]> {
+    const now = Date.now();
+    if (!forceRefresh && selectorCache && (now - selectorCache.timestamp < 10000)) {
+      return selectorCache.data;
     }
+    if (!forceRefresh && pendingSelectorPromise) {
+      return pendingSelectorPromise;
+    }
+
+    pendingSelectorPromise = (async () => {
+      try {
+        const response = await apiClient.get('/properties/selector/');
+        const result = extractArray<PropertySelectorItem>(response.data, []);
+        selectorCache = { data: result, timestamp: Date.now() };
+        return result;
+      } catch {
+        return selectorCache?.data || [];
+      } finally {
+        pendingSelectorPromise = null;
+      }
+    })();
+
+    return pendingSelectorPromise;
   },
 
   async getPropertyById(id: number | string): Promise<Property> {

@@ -42,7 +42,7 @@ export function TenantDetailModal({
       const fetchDetail = async () => {
         setIsLoading(true);
         try {
-          const data = await tenantService.getTenantById(tenantId);
+          const data = await tenantService.getTenant(tenantId);
           setTenant(data);
         } catch {
           setTenant(null);

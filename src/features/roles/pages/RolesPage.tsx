@@ -129,7 +129,7 @@ export function RolesPage() {
             </Button>
 
             <Can permission="roles:manage">
-              <Button onClick={handleOpenCreate} className="text-xs font-semibold flex items-center gap-1.5 bg-indigo-900 hover:bg-indigo-950">
+              <Button onClick={handleOpenCreateModal} className="text-xs font-semibold flex items-center gap-1.5 bg-indigo-900 hover:bg-indigo-950">
                 <Plus className="h-4 w-4" />
                 <span>Create New Role</span>
               </Button>
@@ -201,7 +201,7 @@ export function RolesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleOpenEdit(role)}
+                        onClick={() => handleOpenEditModal(role)}
                         className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900"
                         title="Edit Role & Permissions"
                       >
