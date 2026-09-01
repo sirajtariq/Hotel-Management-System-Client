@@ -1,54 +1,7 @@
 import { apiClient } from '@/lib/axios';
 import { RoleItem, PermissionCatalog, CreateRolePayload, UpdateRolePayload } from '@/types/roles';
 
-const MOCK_ROLES: RoleItem[] = [
-  {
-    id: '1',
-    name: 'Property Manager',
-    description: 'Full operational control over rooms, bookings, staff, and expenses.',
-    permissions: [
-      'properties:view', 'properties:manage',
-      'rooms:view', 'rooms:manage', 'rooms:change_status',
-      'bookings:view', 'bookings:create', 'bookings:update', 'bookings:record_payment', 'bookings:cancel',
-      'expenses:view', 'expenses:create', 'expenses:delete',
-      'staff:view', 'staff:manage',
-      'reports:view_pnl', 'reports:export'
-    ],
-    is_system: true,
-    users_count: 3,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Front Desk Receptionist',
-    description: 'Check-in guests, handle reservations, and collect booking payments.',
-    permissions: [
-      'properties:view',
-      'rooms:view', 'rooms:change_status',
-      'bookings:view', 'bookings:create', 'bookings:update', 'bookings:record_payment',
-      'expenses:view',
-    ],
-    is_system: false,
-    users_count: 5,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Housekeeping Supervisor',
-    description: 'Manage room cleanliness status and inventory inspection.',
-    permissions: [
-      'rooms:view', 'rooms:change_status',
-    ],
-    is_system: false,
-    users_count: 2,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
-
-const MOCK_PERMISSIONS: PermissionCatalog = {
+const DEFAULT_PERMISSIONS: PermissionCatalog = {
   "Properties": [
     { code: "properties:view", name: "View Properties" },
     { code: "properties:manage", name: "Create, Edit & Delete Properties" },
@@ -99,13 +52,12 @@ export const roleService = {
     }
   },
 
-
   async getAvailablePermissions(): Promise<PermissionCatalog> {
     try {
       const response = await apiClient.get('/roles/available-permissions/');
-      return response.data || MOCK_PERMISSIONS;
+      return response.data || DEFAULT_PERMISSIONS;
     } catch {
-      return MOCK_PERMISSIONS;
+      return DEFAULT_PERMISSIONS;
     }
   },
 
@@ -121,18 +73,7 @@ export const roleService = {
           : String(errorData);
         throw new Error(msg);
       }
-      const newRole: RoleItem = {
-        id: String(Date.now()),
-        name: payload.name,
-        description: payload.description || '',
-        permissions: payload.permissions,
-        is_system: false,
-        users_count: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      MOCK_ROLES.push(newRole);
-      return newRole;
+      throw err;
     }
   },
 
@@ -141,27 +82,18 @@ export const roleService = {
       const response = await apiClient.patch<RoleItem>(`/roles/${id}/`, payload);
       return response.data;
     } catch (err: any) {
-      const index = MOCK_ROLES.findIndex((r) => r.id === id);
-      if (index !== -1) {
-        MOCK_ROLES[index] = {
-          ...MOCK_ROLES[index],
-          ...payload,
-          updated_at: new Date().toISOString(),
-        };
-        return MOCK_ROLES[index];
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        const msg = typeof errorData === 'object'
+          ? Object.entries(errorData).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(errorData);
+        throw new Error(msg);
       }
       throw err;
     }
   },
 
   async deleteRole(id: string): Promise<void> {
-    try {
-      await apiClient.delete(`/roles/${id}/`);
-    } catch {
-      const index = MOCK_ROLES.findIndex((r) => r.id === id);
-      if (index !== -1) {
-        MOCK_ROLES.splice(index, 1);
-      }
-    }
+    await apiClient.delete(`/roles/${id}/`);
   },
 };

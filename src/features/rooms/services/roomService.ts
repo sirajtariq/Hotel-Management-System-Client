@@ -1,314 +1,74 @@
 import { apiClient } from '@/lib/axios';
 import { Room, RoomStatus, HousekeepingStatus, CreateRoomInput } from '@/types/rooms';
 
-const MOCK_ROOMS: Room[] = [
-  // Floor 1
-  {
-    id: 'rm_101',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '101',
-    floor: 1,
-    room_type_name: 'Standard Single / Double',
-    base_price: 18000,
-    status: 'AVAILABLE',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC', 'Single/Double Bed', 'TV'],
-  },
-  {
-    id: 'rm_102',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '102',
-    floor: 1,
-    room_type_name: 'Deluxe King Room',
-    base_price: 28000,
-    status: 'OCCUPIED',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: 'Arthur Morgan',
-    active_booking_id: 'bk_1002',
-    capacity: 2,
-    amenities: ['WiFi', 'AC', 'King Bed', 'Balcony'],
-  },
-  {
-    id: 'rm_103',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '103',
-    floor: 1,
-    room_type_name: 'Standard Single / Double',
-    base_price: 18000,
-    status: 'CLEANING',
-    housekeeping_status: 'IN_PROGRESS',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC'],
-  },
-  {
-    id: 'rm_104',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '104',
-    floor: 1,
-    room_type_name: 'Executive Suite',
-    base_price: 45000,
-    status: 'RESERVED',
-    housekeeping_status: 'INSPECTED',
-    current_guest_name: 'Zainab Malik',
-    active_booking_id: 'bk_1004',
-    capacity: 3,
-    amenities: ['WiFi', 'AC', 'Minibar', 'Suite Lounge'],
-  },
-  {
-    id: 'rm_105',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '105',
-    floor: 1,
-    room_type_name: 'Deluxe King Room',
-    base_price: 28000,
-    status: 'MAINTENANCE',
-    housekeeping_status: 'DIRTY',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC', 'King Bed'],
-  },
-  {
-    id: 'rm_106',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '106',
-    floor: 1,
-    room_type_name: 'Family Suite',
-    base_price: 52000,
-    status: 'AVAILABLE',
-    housekeeping_status: 'INSPECTED',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 4,
-    amenities: ['WiFi', 'AC', '2 Bedrooms', 'Living Room'],
-  },
+export interface AvailableRoomItem {
+  id: number | string;
+  propertyId: number | string;
+  roomNumber: string;
+  roomTypeName: string;
+  floor?: string;
+  maxOccupancy?: number;
+  basePrice: number;
+  hourlyRate: number;
+  isHourlyAllowed: boolean;
+}
 
-  // Floor 2
-  {
-    id: 'rm_201',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '201',
-    floor: 2,
-    room_type_name: 'Deluxe King Room',
-    base_price: 32000,
-    status: 'OCCUPIED',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: 'Tariq Mahmood',
-    active_booking_id: 'bk_2001',
-    capacity: 2,
-    amenities: ['WiFi', 'AC', 'Sea View', 'King Bed'],
-  },
-  {
-    id: 'rm_202',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '202',
-    floor: 2,
-    room_type_name: 'Executive Suite',
-    base_price: 48000,
-    status: 'OCCUPIED',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: 'Sarah Jenkins',
-    active_booking_id: 'bk_2002',
-    capacity: 3,
-    amenities: ['WiFi', 'AC', 'Jacuzzi', 'Work Desk'],
-  },
-  {
-    id: 'rm_203',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '203',
-    floor: 2,
-    room_type_name: 'Standard Single / Double',
-    base_price: 20000,
-    status: 'AVAILABLE',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC'],
-  },
-  {
-    id: 'rm_204',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '204',
-    floor: 2,
-    room_type_name: 'Standard Single / Double',
-    base_price: 20000,
-    status: 'CLEANING',
-    housekeeping_status: 'DIRTY',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC'],
-  },
-  {
-    id: 'rm_205',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '205',
-    floor: 2,
-    room_type_name: 'Deluxe King Room',
-    base_price: 32000,
-    status: 'RESERVED',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: 'Bilal Chaudhry',
-    active_booking_id: 'bk_2005',
-    capacity: 2,
-    amenities: ['WiFi', 'AC', 'King Bed'],
-  },
-  {
-    id: 'rm_206',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '206',
-    floor: 2,
-    room_type_name: 'Executive Suite',
-    base_price: 48000,
-    status: 'AVAILABLE',
-    housekeeping_status: 'DIRTY',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 3,
-    amenities: ['WiFi', 'AC', 'Executive Lounge Access'],
-  },
+export interface RoomTypeSelectorItem {
+  id: number | string;
+  name: string;
+  basePricePerNight: number;
+  base_price_per_night?: number;
+  basePrice?: number;
+  hourlyRate?: number;
+  hourly_rate?: number;
+  isHourlyAllowed?: boolean;
+  is_hourly_allowed?: boolean;
+  maxOccupancy?: number;
+  max_occupancy?: number;
+  amenities?: string[];
+}
 
-  // Floor 3
-  {
-    id: 'rm_301',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '301',
-    floor: 3,
-    room_type_name: 'Penthouse Suite',
-    base_price: 125000,
-    status: 'OCCUPIED',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: 'Dr. Usman Ali',
-    active_booking_id: 'bk_3001',
-    capacity: 6,
-    amenities: ['Private Pool', 'Butler Service', 'Panaromic View'],
-  },
-  {
-    id: 'rm_302',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '302',
-    floor: 3,
-    room_type_name: 'Executive Suite',
-    base_price: 55000,
-    status: 'AVAILABLE',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 3,
-    amenities: ['WiFi', 'AC', 'Balcony'],
-  },
-  {
-    id: 'rm_303',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '303',
-    floor: 3,
-    room_type_name: 'Family Suite',
-    base_price: 60000,
-    status: 'OCCUPIED',
-    housekeeping_status: 'CLEAN',
-    current_guest_name: 'Mr. & Mrs. Farooq',
-    active_booking_id: 'bk_3003',
-    capacity: 4,
-    amenities: ['WiFi', 'AC', 'Kitchenette'],
-  },
-  {
-    id: 'rm_304',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '304',
-    floor: 3,
-    room_type_name: 'Deluxe King Room',
-    base_price: 35000,
-    status: 'AVAILABLE',
-    housekeeping_status: 'INSPECTED',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC'],
-  },
-  {
-    id: 'rm_305',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '305',
-    floor: 3,
-    room_type_name: 'Standard Single / Double',
-    base_price: 22000,
-    status: 'CLEANING',
-    housekeeping_status: 'IN_PROGRESS',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 2,
-    amenities: ['WiFi', 'AC'],
-  },
-  {
-    id: 'rm_306',
-    propertyId: 'prop_01',
-    propertyName: 'Pearl Continental',
-    roomNumber: '306',
-    floor: 3,
-    room_type_name: 'Penthouse Suite',
-    base_price: 125000,
-    status: 'MAINTENANCE',
-    housekeeping_status: 'DIRTY',
-    current_guest_name: null,
-    active_booking_id: null,
-    capacity: 6,
-    amenities: ['Private Pool', 'Jacuzzi'],
-  },
-];
+export interface RoomTypeItem {
+  id: string | number;
+  propertyId?: string;
+  propertyName?: string;
+  name: string;
+  code?: string;
+  description?: string;
+  basePricePerNight: number;
+  basePrice: number;
+  baseRate: number;
+  base_price_per_night?: number;
+  base_price?: number;
+  hourlyRate?: number;
+  hourly_rate?: number;
+  isHourlyAllowed?: boolean;
+  is_hourly_allowed?: boolean;
+  is_active?: boolean;
+  maxOccupancy: number;
+  capacity: number;
+  amenities?: string[];
+}
 
-function normalizeRoom(r: any): Room {
-  const roomTypeName = r.room_type_name || r.room_type_details?.name || r.type || 'Standard Room';
-  const price = typeof r.base_price !== 'undefined' && r.base_price !== null
-    ? parseFloat(r.base_price)
-    : parseFloat(r.room_type_details?.base_price_per_night || r.basePricePerNight || '0');
-
-  const hourlyRateVal = typeof r.hourly_rate !== 'undefined' && r.hourly_rate !== null
-    ? parseFloat(r.hourly_rate)
-    : Math.round(price / 6);
-
-  const statusUpper = String(r.status || 'AVAILABLE').toUpperCase() as RoomStatus;
-  const hkStatusUpper = String(r.housekeeping_status || 'CLEAN').toUpperCase() as HousekeepingStatus;
-
-  return {
-    id: String(r.id),
-    propertyId: String(r.property || r.propertyId || ''),
-    propertyName: r.property_name || r.propertyName || 'Hotel Property',
-    roomNumber: String(r.room_number || r.roomNumber || 'N/A'),
-    floor: r.floor ?? 1,
-    room_type_name: roomTypeName,
-    base_price: isNaN(price) ? 0 : price,
-    hourly_rate: isNaN(hourlyRateVal) ? 1000 : hourlyRateVal,
-    is_hourly_allowed: r.is_hourly_allowed ?? true,
-    status: statusUpper,
-    housekeeping_status: hkStatusUpper,
-    current_guest_name: r.current_guest_name || null,
-    active_booking_id: r.active_booking_id || null,
-    capacity: r.room_type_details?.max_occupancy || r.capacity || 2,
-    amenities: Array.isArray(r.amenities) ? r.amenities : [],
-  };
+export interface CreateRoomTypeInput {
+  property?: number | string;
+  property_id?: number | string;
+  propertyId?: number | string;
+  name: string;
+  code?: string;
+  description?: string;
+  max_occupancy?: number;
+  capacity?: number;
+  maxOccupancy?: number;
+  base_price_per_night?: number;
+  base_price?: number;
+  baseRate?: number;
+  basePrice?: number;
+  is_hourly_allowed?: boolean;
+  isHourlyAllowed?: boolean;
+  hourly_rate?: number;
+  hourlyRate?: number;
+  amenities?: string[];
 }
 
 function extractArray<T>(data: any, fallback: T[]): T[] {
@@ -317,55 +77,280 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
   return fallback;
 }
 
+function mapRoomTypeItem(item: any): RoomTypeItem {
+  const bPrice = parseFloat(item.basePricePerNight ?? item.base_price_per_night ?? item.basePrice ?? item.baseRate ?? item.base_price ?? '0') || 0;
+  const hRate = parseFloat(item.hourlyRate ?? item.hourly_rate ?? item.hourly_price ?? '0') || 0;
+  const isHourly = Boolean(item.isHourlyAllowed ?? item.is_hourly_allowed ?? true);
+  const maxOcc = Number(item.maxOccupancy ?? item.max_occupancy ?? item.capacity ?? 2);
+
+  return {
+    id: String(item.id),
+    propertyId: String(item.property || item.property_id || item.propertyId || ''),
+    propertyName: item.propertyName || item.property_name || '',
+    name: item.name || '',
+    code: item.code || '',
+    description: item.description || '',
+    basePricePerNight: bPrice,
+    basePrice: bPrice,
+    baseRate: bPrice,
+    hourlyRate: hRate,
+    hourly_rate: hRate,
+    isHourlyAllowed: isHourly,
+    is_hourly_allowed: isHourly,
+    maxOccupancy: maxOcc,
+    capacity: maxOcc,
+    amenities: Array.isArray(item.amenities) ? item.amenities : [],
+  };
+}
+
+function normalizeRoom(r: any): Room {
+  const roomTypeName = r.roomTypeName || r.room_type_name || r.room_type_details?.name || r.type || 'Standard Room';
+  const price = typeof r.basePrice !== 'undefined' && r.basePrice !== null
+    ? parseFloat(r.basePrice)
+    : (typeof r.base_price !== 'undefined' && r.base_price !== null
+        ? parseFloat(r.base_price)
+        : parseFloat(r.basePricePerNight || r.base_price_per_night || r.room_type_details?.basePricePerNight || r.room_type_details?.base_price_per_night || '0'));
+
+  const hourlyRateVal = typeof r.hourlyRate !== 'undefined' && r.hourlyRate !== null
+    ? parseFloat(r.hourlyRate)
+    : (typeof r.hourly_rate !== 'undefined' && r.hourly_rate !== null
+        ? parseFloat(r.hourly_rate)
+        : parseFloat(r.room_type_details?.hourlyRate || r.room_type_details?.hourly_rate || '0'));
+
+  const statusUpper = String(r.status || 'AVAILABLE').toUpperCase() as RoomStatus;
+  const hkStatusUpper = String(r.housekeepingStatus || r.housekeeping_status || 'CLEAN').toUpperCase() as HousekeepingStatus;
+
+  return {
+    id: String(r.id),
+    propertyId: String(r.property || r.propertyId || ''),
+    propertyName: r.propertyName || r.property_name || 'Hotel Property',
+    roomNumber: String(r.roomNumber || r.room_number || 'N/A'),
+    floor: r.floor ?? 1,
+    room_type_name: roomTypeName,
+    base_price: isNaN(price) ? 0 : price,
+    hourly_rate: isNaN(hourlyRateVal) ? 0 : hourlyRateVal,
+    is_hourly_allowed: r.isHourlyAllowed ?? r.is_hourly_allowed ?? r.room_type_details?.is_hourly_allowed ?? true,
+    status: statusUpper,
+    housekeeping_status: hkStatusUpper,
+    current_guest_name: r.currentGuestName || r.current_guest_name || null,
+    active_booking_id: r.activeBookingId || r.active_booking_id || null,
+    capacity: r.maxOccupancy || r.max_occupancy || r.room_type_details?.max_occupancy || r.capacity || 2,
+    amenities: Array.isArray(r.amenities) ? r.amenities : (Array.isArray(r.room_type_details?.amenities) ? r.room_type_details.amenities : []),
+  };
+}
+
+let roomTypesCache: { data: RoomTypeItem[]; timestamp: number } | null = null;
+let pendingRoomTypesPromise: Promise<RoomTypeItem[]> | null = null;
+
+let roomsCache: { key: string; data: Room[]; timestamp: number } | null = null;
+let pendingRoomsPromise: Promise<Room[]> | null = null;
+
 export const roomService = {
-  async getRooms(propertyId?: string): Promise<Room[]> {
-    try {
-      const url = propertyId ? `/rooms/?property_id=${propertyId}` : '/rooms/';
-      const response = await apiClient.get(url);
-      const rawList = extractArray<any>(response.data, []);
-      if (rawList.length > 0) {
-        return rawList.map(normalizeRoom);
-      }
-      return MOCK_ROOMS.map(normalizeRoom);
-    } catch {
-      return MOCK_ROOMS.map(normalizeRoom);
+  async getRoomTypes(forceRefresh = false): Promise<RoomTypeItem[]> {
+    const now = Date.now();
+    if (!forceRefresh && roomTypesCache && (now - roomTypesCache.timestamp < 10000)) {
+      return roomTypesCache.data;
     }
+    if (!forceRefresh && pendingRoomTypesPromise) {
+      return pendingRoomTypesPromise;
+    }
+
+    pendingRoomTypesPromise = (async () => {
+      try {
+        const response = await apiClient.get('/rooms/types/');
+        const raw = extractArray<any>(response.data, []);
+        const result = raw.map(mapRoomTypeItem);
+        roomTypesCache = { data: result, timestamp: Date.now() };
+        return result;
+      } catch {
+        return roomTypesCache?.data || [];
+      } finally {
+        pendingRoomTypesPromise = null;
+      }
+    })();
+
+    return pendingRoomTypesPromise;
+  },
+
+  async getRoomTypeSelector(propertyId?: number | string): Promise<RoomTypeSelectorItem[]> {
+    try {
+      const params = propertyId && propertyId !== 'ALL' ? { propertyId } : {};
+      const response = await apiClient.get('/rooms/types/selector/', { params });
+      const raw = extractArray<any>(response.data, []);
+      return raw.map((item) => {
+        const baseP = parseFloat(item.basePricePerNight ?? item.base_price_per_night ?? item.basePrice ?? item.baseRate ?? '0') || 0;
+        const hourlyP = item.hourlyRate ?? item.hourly_rate;
+        return {
+          id: item.id,
+          name: item.name,
+          basePricePerNight: baseP,
+          base_price_per_night: baseP,
+          basePrice: baseP,
+          hourlyRate: typeof hourlyP !== 'undefined' && hourlyP !== null ? parseFloat(hourlyP) || 0 : undefined,
+          hourly_rate: typeof hourlyP !== 'undefined' && hourlyP !== null ? parseFloat(hourlyP) || 0 : undefined,
+          isHourlyAllowed: Boolean(item.isHourlyAllowed ?? item.is_hourly_allowed ?? true),
+          is_hourly_allowed: Boolean(item.isHourlyAllowed ?? item.is_hourly_allowed ?? true),
+          maxOccupancy: item.maxOccupancy ?? item.max_occupancy ?? 2,
+          max_occupancy: item.maxOccupancy ?? item.max_occupancy ?? 2,
+          amenities: Array.isArray(item.amenities) ? item.amenities : [],
+        };
+      });
+    } catch {
+      return [];
+    }
+  },
+
+  async createRoomType(input: CreateRoomTypeInput): Promise<RoomTypeItem> {
+    try {
+      const pId = Number(input.property ?? input.property_id ?? input.propertyId);
+      const baseP = Number(input.base_price_per_night ?? input.base_price ?? input.baseRate ?? input.basePrice ?? 0);
+      const hourlyP = typeof input.hourly_rate !== 'undefined'
+        ? Number(input.hourly_rate)
+        : (typeof input.hourlyRate !== 'undefined' ? Number(input.hourlyRate) : Math.round(baseP * 0.25));
+
+      const payload = {
+        property: pId,
+        name: input.name.trim(),
+        code: input.code?.trim() || input.name.toLowerCase().replace(/\s+/g, '-'),
+        description: input.description?.trim() || '',
+        max_occupancy: Number(input.max_occupancy || input.capacity || input.maxOccupancy || 2),
+        base_price_per_night: baseP,
+        is_hourly_allowed: Boolean(input.is_hourly_allowed ?? input.isHourlyAllowed ?? true),
+        hourly_rate: input.is_hourly_allowed === false ? 0 : hourlyP,
+        amenities: input.amenities || [],
+      };
+      const response = await apiClient.post('/rooms/types/', payload);
+      return mapRoomTypeItem(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async updateRoomType(id: string | number, input: Partial<CreateRoomTypeInput>): Promise<RoomTypeItem> {
+    try {
+      const response = await apiClient.patch(`/rooms/types/${id}/`, input);
+      return mapRoomTypeItem(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async deleteRoomType(id: string | number): Promise<void> {
+    await apiClient.delete(`/rooms/types/${id}/`);
+  },
+
+  async getRooms(propertyId?: string, forceRefresh = false): Promise<Room[]> {
+    const key = propertyId || 'ALL';
+    const now = Date.now();
+
+    if (!forceRefresh && roomsCache && roomsCache.key === key && (now - roomsCache.timestamp < 10000)) {
+      return roomsCache.data;
+    }
+    if (!forceRefresh && pendingRoomsPromise) {
+      return pendingRoomsPromise;
+    }
+
+    pendingRoomsPromise = (async () => {
+      try {
+        const url = propertyId ? `/rooms/?property_id=${propertyId}` : '/rooms/';
+        const response = await apiClient.get(url);
+        const rawList = extractArray<any>(response.data, []);
+        const result = rawList.map(normalizeRoom);
+        roomsCache = { key, data: result, timestamp: Date.now() };
+        return result;
+      } catch {
+        return roomsCache?.data || [];
+      } finally {
+        pendingRoomsPromise = null;
+      }
+    })();
+
+    return pendingRoomsPromise;
   },
 
   async updateRoomStatus(roomId: string, status: RoomStatus): Promise<Room> {
     try {
+      roomsCache = null;
       const response = await apiClient.patch<Room>(`/rooms/${roomId}/`, { status });
       return normalizeRoom(response.data);
-    } catch {
-      const target = MOCK_ROOMS.find((r) => r.id === roomId);
-      if (target) target.status = status;
-      return normalizeRoom(target || MOCK_ROOMS[0]);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async updateHousekeepingStatus(roomId: string, hkStatus: HousekeepingStatus): Promise<Room> {
+    try {
+      roomsCache = null;
+      const response = await apiClient.patch<Room>(`/rooms/${roomId}/`, { housekeeping_status: hkStatus });
+      return normalizeRoom(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
     }
   },
 
   async createRoom(input: CreateRoomInput): Promise<Room> {
     try {
+      roomsCache = null;
       const response = await apiClient.post<Room>('/rooms/', input);
       return normalizeRoom(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async deleteRoom(id: string | number): Promise<void> {
+    roomsCache = null;
+    await apiClient.delete(`/rooms/${id}/`);
+  },
+
+  async getAvailableRooms(propertyId?: string | number): Promise<AvailableRoomItem[]> {
+    try {
+      const params = propertyId && propertyId !== 'ALL' ? { propertyId } : {};
+      const response = await apiClient.get<any[]>('/rooms/available/', { params });
+      const list = extractArray<any>(response.data, []);
+      return list.map((r) => ({
+        id: r.id,
+        propertyId: r.propertyId ?? r.property_id,
+        roomNumber: r.roomNumber ?? r.room_number ?? 'N/A',
+        roomTypeName: r.roomTypeName ?? r.room_type_name ?? 'Standard Room',
+        floor: r.floor || '',
+        maxOccupancy: r.maxOccupancy ?? r.max_occupancy ?? 2,
+        basePrice: parseFloat(r.basePrice ?? r.base_price ?? '0'),
+        hourlyRate: parseFloat(r.hourlyRate ?? r.hourly_rate ?? '0'),
+        isHourlyAllowed: Boolean(r.isHourlyAllowed ?? r.is_hourly_allowed ?? true),
+      }));
     } catch {
-      const newRoom: Room = {
-        id: `rm_${Date.now()}`,
-        propertyId: input.propertyId,
-        propertyName: 'Pearl Continental',
-        roomNumber: input.roomNumber,
-        floor: input.floor,
-        room_type_name: String(input.type),
-        base_price: input.basePricePerNight,
-        status: 'AVAILABLE',
-        housekeeping_status: 'CLEAN',
-        current_guest_name: null,
-        active_booking_id: null,
-        capacity: input.capacity,
-        amenities: input.amenities,
-      };
-      MOCK_ROOMS.unshift(newRoom);
-      return newRoom;
+      return [];
     }
   },
 };
-

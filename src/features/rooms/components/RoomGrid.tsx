@@ -4,12 +4,13 @@ import { Room, RoomStatus } from '@/types/rooms';
 interface RoomGridProps {
   rooms: Room[];
   onStatusChange: (roomId: string, status: RoomStatus) => void;
+  onCardClick?: (room: Room) => void;
 }
 
-export function RoomGrid({ rooms, onStatusChange }: RoomGridProps) {
+export function RoomGrid({ rooms, onStatusChange, onCardClick }: RoomGridProps) {
   if (!rooms.length) {
     return (
-      <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
+      <div className="text-center py-12 bg-white rounded-2xl border border-slate-200/80">
         <p className="text-xs text-slate-500 font-medium">No rooms found matching current status/search.</p>
       </div>
     );
@@ -18,7 +19,7 @@ export function RoomGrid({ rooms, onStatusChange }: RoomGridProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {rooms.map((room) => (
-        <RoomCard key={room.id} room={room} onStatusChange={onStatusChange} />
+        <RoomCard key={room.id} room={room} onStatusChange={onStatusChange} onCardClick={onCardClick} />
       ))}
     </div>
   );

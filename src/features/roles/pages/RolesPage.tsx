@@ -7,6 +7,7 @@ import { RoleItem, PermissionCatalog, CreateRolePayload, UpdateRolePayload } fro
 import { roleService } from '../services/roleService';
 import { RoleFormModal } from '../components/RoleFormModal';
 import { toast } from '@/components/ui/ToastProvider';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Can } from '@/lib/rbac';
 
 export function RolesPage() {
@@ -19,6 +20,7 @@ export function RolesPage() {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingRole, setEditingRole] = useState<RoleItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<RoleItem | null>(null);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -29,8 +31,8 @@ export function RolesPage() {
       ]);
       setRoles(rolesData);
       setAvailablePermissions(permsData);
-    } catch (err) {
-      console.error('Failed to load roles & permissions:', err);
+    } catch {
+      toast.error('Failed to load roles and permissions.');
     } finally {
       setIsLoading(false);
     }
@@ -40,12 +42,12 @@ export function RolesPage() {
     fetchData();
   }, []);
 
-  const handleOpenCreate = () => {
+  const handleOpenCreateModal = () => {
     setEditingRole(null);
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (role: RoleItem) => {
+  const handleOpenEditModal = (role: RoleItem) => {
     setEditingRole(role);
     setIsModalOpen(true);
   };
@@ -55,21 +57,21 @@ export function RolesPage() {
     try {
       if (editingRole) {
         await roleService.updateRole(editingRole.id, payload as UpdateRolePayload);
-        toast.success('Role Updated', `Successfully saved changes for '${payload.name}'`);
+        toast.success('Role Updated', `Successfully updated permissions for ${payload.name}`);
       } else {
         await roleService.createRole(payload as CreateRolePayload);
-        toast.success('Role Created', `Custom role '${payload.name}' registered into permission matrix`);
+        toast.success('Role Created', `Successfully created custom role '${payload.name}'`);
       }
-      await fetchData();
       setIsModalOpen(false);
-    } catch {
-      toast.error('Action Failed', 'Could not save role configuration.');
+      await fetchData();
+    } catch (err: any) {
+      toast.error('Operation Failed', err.message || 'Could not save role.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDeleteRole = async (role: RoleItem) => {
+  const handleDeleteRole = (role: RoleItem) => {
     if (role.is_system) {
       toast.warning('Protected Role', 'System default roles cannot be deleted.');
       return;
@@ -78,19 +80,21 @@ export function RolesPage() {
       toast.warning('Role In Use', `Cannot delete role '${role.name}' because it is assigned to ${role.users_count} user(s).`);
       return;
     }
-    if (!window.confirm(`Are you sure you want to delete role '${role.name}'?`)) {
-      return;
-    }
+    setRoleToDelete(role);
+  };
 
-    setDeletingId(role.id);
+  const confirmDeleteRole = async () => {
+    if (!roleToDelete) return;
+    setDeletingId(roleToDelete.id);
     try {
-      await roleService.deleteRole(role.id);
-      toast.success('Role Deleted', `Role '${role.name}' has been deleted.`);
+      await roleService.deleteRole(roleToDelete.id);
+      toast.success('Role Deleted', `Role '${roleToDelete.name}' has been deleted.`);
       await fetchData();
     } catch (err: any) {
       toast.error('Delete Failed', err.message || 'Failed to delete role.');
     } finally {
       setDeletingId(null);
+      setRoleToDelete(null);
     }
   };
 
@@ -125,7 +129,7 @@ export function RolesPage() {
             </Button>
 
             <Can permission="roles:manage">
-              <Button onClick={handleOpenCreate} className="text-xs font-semibold flex items-center gap-1.5 bg-indigo-900 hover:bg-indigo-950">
+              <Button onClick={handleOpenCreateModal} className="text-xs font-semibold flex items-center gap-1.5 bg-indigo-900 hover:bg-indigo-950">
                 <Plus className="h-4 w-4" />
                 <span>Create New Role</span>
               </Button>
@@ -197,7 +201,7 @@ export function RolesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleOpenEdit(role)}
+                        onClick={() => handleOpenEditModal(role)}
                         className="h-7 w-7 p-0 text-slate-500 hover:text-slate-900"
                         title="Edit Role & Permissions"
                       >
@@ -224,7 +228,6 @@ export function RolesPage() {
           )}
         </div>
 
-        {/* Role Form Modal */}
         <RoleFormModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
@@ -232,6 +235,17 @@ export function RolesPage() {
           initialData={editingRole}
           availablePermissions={availablePermissions}
           isSubmitting={isSubmitting}
+        />
+
+        <ConfirmModal
+          isOpen={!!roleToDelete}
+          onClose={() => setRoleToDelete(null)}
+          onConfirm={confirmDeleteRole}
+          title="Delete Custom Role"
+          description={`Are you sure you want to delete role '${roleToDelete?.name}'? This action cannot be undone.`}
+          confirmText="Delete Role"
+          variant="danger"
+          isLoading={!!deletingId}
         />
       </div>
     </PermissionGuard>

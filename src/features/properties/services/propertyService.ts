@@ -1,74 +1,48 @@
 import { apiClient } from '@/lib/axios';
-import { Property, CreatePropertyInput } from '@/types/properties';
-
-const MOCK_PROPERTIES: Property[] = [
-  {
-    id: 'prop_01',
-    name: 'Pearl Continental & Serviced Suites',
-    code: 'PCSS',
-    type: 'serviced_apartment',
-    address: 'Club Road, Opp. Civil Lines',
-    city: 'Karachi',
-    totalRooms: 45,
-    occupiedRooms: 38,
-    cleaningRooms: 4,
-    availableRooms: 3,
-    monthlyRevenue: 3450000,
-    occupancyRate: 84.4,
-    status: 'active',
-    createdAt: '2026-01-10',
-  },
-  {
-    id: 'prop_02',
-    name: 'Grand Horizon Luxury Apartments',
-    code: 'GHLA',
-    type: 'serviced_apartment',
-    address: 'Gulberg III, Main Boulevard',
-    city: 'Lahore',
-    totalRooms: 30,
-    occupiedRooms: 24,
-    cleaningRooms: 2,
-    availableRooms: 4,
-    monthlyRevenue: 2800000,
-    occupancyRate: 80.0,
-    status: 'active',
-    createdAt: '2026-02-01',
-  },
-  {
-    id: 'prop_03',
-    name: 'Margalla View Boutique Hotel',
-    code: 'MVBH',
-    type: 'hotel',
-    address: 'F-7 Markaz',
-    city: 'Islamabad',
-    totalRooms: 20,
-    occupiedRooms: 15,
-    cleaningRooms: 1,
-    availableRooms: 4,
-    monthlyRevenue: 1950000,
-    occupancyRate: 75.0,
-    status: 'active',
-    createdAt: '2026-03-15',
-  },
-];
+import { Property, PropertySelectorItem, CreatePropertyInput } from '@/types/properties';
 
 function normalizeProperty(p: any): Property {
+  const total = p.total_rooms ?? p.totalRooms ?? 0;
+  const booked = p.booked_rooms ?? p.bookedRooms ?? p.occupied_rooms ?? p.occupiedRooms ?? 0;
+  const cleaning = p.cleaning_rooms ?? p.cleaningRooms ?? 0;
+  const available = p.available_rooms ?? p.availableRooms ?? 0;
+  const rent = parseFloat(p.monthly_rent ?? p.monthlyRent ?? p.monthlyRevenue ?? p.est_monthly_revenue ?? p.estMonthlyRevenue ?? '0');
+  const occRate = p.occupancy_rate ?? p.occupancyRate ?? (total > 0 ? roundOneDecimal((booked / total) * 100) : 0);
+
   return {
-    id: String(p.id),
-    name: p.name || 'Hotel Property',
+    id: p.id,
+    name: p.name || 'Hotel Branch',
     code: p.code || `P-${p.id}`,
-    type: (p.type || 'serviced_apartment').toLowerCase() as any,
+    type: p.property_type || p.propertyType || p.type || 'Hotel Branch',
+    propertyType: p.property_type || p.propertyType || p.type || 'Hotel Branch',
     address: p.address || '',
     city: p.city || 'Karachi',
-    totalRooms: p.total_rooms || p.totalRooms || 0,
-    occupiedRooms: p.occupied_rooms || p.occupiedRooms || 0,
-    cleaningRooms: p.cleaning_rooms || p.cleaningRooms || 0,
-    availableRooms: p.available_rooms || p.availableRooms || 0,
-    monthlyRevenue: parseFloat(p.monthly_rent || p.monthlyRevenue || '0'),
-    occupancyRate: p.occupancy_rate || p.occupancyRate || 0,
-    status: (p.status || 'ACTIVE').toLowerCase() as any,
-    createdAt: p.created_at || p.createdAt || new Date().toISOString().split('T')[0],
+    phone: p.phone || '',
+    email: p.email || '',
+    monthly_rent: rent,
+    monthlyRent: rent,
+    totalRooms: total,
+    total_rooms: total,
+    bookedRooms: booked,
+    booked_rooms: booked,
+    occupiedRooms: booked,
+    occupied_rooms: booked,
+    cleaningRooms: cleaning,
+    cleaning_rooms: cleaning,
+    availableRooms: available,
+    available_rooms: available,
+    monthlyRevenue: rent,
+    estMonthlyRevenue: rent,
+    est_monthly_revenue: rent,
+    occupancyRate: occRate,
+    occupancy_rate: occRate,
+    status: (p.status || 'ACTIVE').toUpperCase(),
+    createdAt: p.created_at || p.createdAt || new Date().toISOString(),
   };
+}
+
+function roundOneDecimal(val: number): number {
+  return Math.round(val * 10) / 10;
 }
 
 function extractArray<T>(data: any, fallback: T[]): T[] {
@@ -77,37 +51,100 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
   return fallback;
 }
 
+let propertiesCache: { data: Property[]; timestamp: number } | null = null;
+let pendingPropertiesPromise: Promise<Property[]> | null = null;
+
+let selectorCache: { data: PropertySelectorItem[]; timestamp: number } | null = null;
+let pendingSelectorPromise: Promise<PropertySelectorItem[]> | null = null;
+
 export const propertyService = {
-  async getProperties(): Promise<Property[]> {
-    try {
-      const response = await apiClient.get('/properties/');
-      const rawList = extractArray<any>(response.data, []);
-      return rawList.map(normalizeProperty);
-    } catch {
-      return [];
+  async getProperties(forceRefresh = false): Promise<Property[]> {
+    const now = Date.now();
+    if (!forceRefresh && propertiesCache && (now - propertiesCache.timestamp < 10000)) {
+      return propertiesCache.data;
     }
+    if (!forceRefresh && pendingPropertiesPromise) {
+      return pendingPropertiesPromise;
+    }
+
+    pendingPropertiesPromise = (async () => {
+      try {
+        const response = await apiClient.get('/properties/');
+        const rawList = extractArray<any>(response.data, []);
+        const result = rawList.map(normalizeProperty);
+        propertiesCache = { data: result, timestamp: Date.now() };
+        return result;
+      } catch {
+        return propertiesCache?.data || [];
+      } finally {
+        pendingPropertiesPromise = null;
+      }
+    })();
+
+    return pendingPropertiesPromise;
   },
 
+  async getPropertySelector(forceRefresh = false): Promise<PropertySelectorItem[]> {
+    const now = Date.now();
+    if (!forceRefresh && selectorCache && (now - selectorCache.timestamp < 10000)) {
+      return selectorCache.data;
+    }
+    if (!forceRefresh && pendingSelectorPromise) {
+      return pendingSelectorPromise;
+    }
 
+    pendingSelectorPromise = (async () => {
+      try {
+        const response = await apiClient.get('/properties/selector/');
+        const result = extractArray<PropertySelectorItem>(response.data, []);
+        selectorCache = { data: result, timestamp: Date.now() };
+        return result;
+      } catch {
+        return selectorCache?.data || [];
+      } finally {
+        pendingSelectorPromise = null;
+      }
+    })();
+
+    return pendingSelectorPromise;
+  },
+
+  async getPropertyById(id: number | string): Promise<Property> {
+    const response = await apiClient.get(`/properties/${id}/`);
+    return normalizeProperty(response.data);
+  },
 
   async createProperty(input: CreatePropertyInput): Promise<Property> {
     try {
       const response = await apiClient.post<Property>('/properties/', input);
-      return response.data;
-    } catch {
-      const newProp: Property = {
-        id: `prop_${Date.now()}`,
-        ...input,
-        occupiedRooms: 0,
-        cleaningRooms: 0,
-        availableRooms: input.totalRooms,
-        monthlyRevenue: 0,
-        occupancyRate: 0,
-        status: 'active',
-        createdAt: new Date().toISOString().split('T')[0],
-      };
-      MOCK_PROPERTIES.unshift(newProp);
-      return newProp;
+      return normalizeProperty(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
     }
+  },
+
+  async updateProperty(id: number | string, input: Partial<CreatePropertyInput>): Promise<Property> {
+    try {
+      const response = await apiClient.patch<Property>(`/properties/${id}/`, input);
+      return normalizeProperty(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async deleteProperty(id: number | string): Promise<void> {
+    await apiClient.delete(`/properties/${id}/`);
   },
 };

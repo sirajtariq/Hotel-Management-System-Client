@@ -3,13 +3,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CreateBookingInput, BookingMode, DiscountType } from '@/types/bookings';
-import { roomService } from '@/features/rooms/services/roomService';
+import { roomService, AvailableRoomItem } from '@/features/rooms/services/roomService';
 import { propertyService } from '@/features/properties/services/propertyService';
-import { Room } from '@/types/rooms';
 import { Property } from '@/types/properties';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { formatPKR, formatDate } from '@/lib/formatters';
-import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles } from 'lucide-react';
+import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles, Loader2, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+import { usePropertySelector } from '@/features/properties/hooks/usePropertySelector';
 
 interface CreateBookingModalProps {
   isOpen: boolean;
@@ -19,14 +21,21 @@ interface CreateBookingModalProps {
 }
 
 export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomId }: CreateBookingModalProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'SUPERADMIN' || user?.role === 'TENANT_ADMIN';
+  const userAssignedPropId = (user as any)?.assignedPropertyId || (user as any)?.propertyId || (user as any)?.staffProfile?.propertyId;
+
+  const { data: cachedProperties = [] } = usePropertySelector();
+
   // Mode selection
   const [bookingMode, setBookingMode] = useState<BookingMode>('NIGHTLY');
 
   // Rooms & Properties list
   const [properties, setProperties] = useState<Property[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('prop_01');
+  const [availableRooms, setAvailableRooms] = useState<AvailableRoomItem[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
+  const [isLoadingRooms, setIsLoadingRooms] = useState<boolean>(false);
 
   // Guest details
   const [guestName, setGuestName] = useState<string>('');
@@ -56,40 +65,58 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
-  // Load properties and rooms
+  // Load properties list & set initial property selection via cached selector
   useEffect(() => {
-    const loadInitData = async () => {
+    if (isOpen) {
+      const propsList = cachedProperties as Property[];
+      setProperties(propsList);
+      if (!isAdmin && userAssignedPropId) {
+        setSelectedPropertyId(String(userAssignedPropId));
+      } else if (propsList.length > 0) {
+        setSelectedPropertyId(String(propsList[0].id));
+      }
+    }
+  }, [isOpen, cachedProperties, isAdmin, userAssignedPropId]);
+
+  // Fetch available rooms on-demand whenever selectedPropertyId changes
+  useEffect(() => {
+    const fetchAvailable = async () => {
+      if (!isOpen || !selectedPropertyId) return;
+      setIsLoadingRooms(true);
       try {
-        const [propsList, roomsList] = await Promise.all([
-          propertyService.getProperties(),
-          roomService.getRooms(),
-        ]);
-        setProperties(propsList);
-        setRooms(roomsList);
+        const rawAvail = await roomService.getAvailableRooms(selectedPropertyId);
+        const availList = rawAvail.filter((r) => {
+          const hk = String((r as any).housekeepingStatus || (r as any).housekeeping_status || 'CLEAN').toUpperCase();
+          return hk !== 'DIRTY' && hk !== 'DIRTY_ROOM' && hk !== 'IN_PROGRESS' && hk !== 'CLEANING';
+        });
+        setAvailableRooms(availList);
 
         if (preselectedRoomId) {
-          const matched = roomsList.find((r) => r.id === preselectedRoomId);
+          const matched = availList.find((r) => String(r.id) === String(preselectedRoomId));
           if (matched) {
-            setSelectedRoomId(matched.id);
-            setSelectedPropertyId(matched.propertyId);
+            setSelectedRoomId(String(matched.id));
+          } else if (availList.length > 0) {
+            setSelectedRoomId(String(availList[0].id));
           }
-        } else if (roomsList.length > 0) {
-          setSelectedRoomId(roomsList[0].id);
-          setSelectedPropertyId(roomsList[0].propertyId);
+        } else if (availList.length > 0) {
+          setSelectedRoomId(String(availList[0].id));
+        } else {
+          setSelectedRoomId('');
         }
       } catch {
-        // Fallback
+        setAvailableRooms([]);
+        setSelectedRoomId('');
+      } finally {
+        setIsLoadingRooms(false);
       }
     };
-    if (isOpen) {
-      loadInitData();
-    }
-  }, [isOpen, preselectedRoomId]);
+    fetchAvailable();
+  }, [isOpen, selectedPropertyId, preselectedRoomId]);
 
   // Currently selected room object
   const selectedRoom = useMemo(() => {
-    return rooms.find((r) => r.id === selectedRoomId) || rooms[0] || null;
-  }, [rooms, selectedRoomId]);
+    return availableRooms.find((r) => String(r.id) === String(selectedRoomId)) || availableRooms[0] || null;
+  }, [availableRooms, selectedRoomId]);
 
   // Hourly end time auto-calculation
   const calculatedEndTime = useMemo(() => {
@@ -111,8 +138,8 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   }, [checkInDate, checkOutDate]);
 
   // Auto-computed Total, Subtotal, Discount, Tax & Rates
-  const defaultNightlyRate = selectedRoom?.base_price || 15000;
-  const defaultHourlyRate = selectedRoom?.hourly_rate || Math.round(defaultNightlyRate / 6);
+  const defaultNightlyRate = selectedRoom?.basePrice || 15000;
+  const defaultHourlyRate = selectedRoom?.hourlyRate || Math.round(defaultNightlyRate / 6);
 
   const subtotalAmount = useMemo(() => {
     if (bookingMode === 'HOURLY') {
@@ -184,45 +211,28 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       durationLabel = `${totalNights} Night${totalNights > 1 ? 's' : ''}`;
     }
 
-    const payload: CreateBookingInput = {
-      propertyId: selectedPropertyId,
-      roomId: selectedRoomId,
+    const cleanPayload: CreateBookingInput = {
+      property: isNaN(Number(selectedPropertyId)) ? selectedPropertyId : Number(selectedPropertyId),
+      room: isNaN(Number(selectedRoomId)) ? selectedRoomId : Number(selectedRoomId),
       guestName: guestName.trim(),
       guestEmail: guestEmail.trim() || undefined,
       guestPhone: guestPhone.trim(),
       cnicOrPassport: cnicOrPassport.trim() || undefined,
-      booking_type: bookingMode,
       bookingType: bookingMode,
-      checkInDate: checkInDate,
-      checkOutDate: checkOutDate,
-      check_in: checkInISO,
-      check_out: checkOutISO,
       checkIn: checkInISO,
       checkOut: checkOutISO,
-      total_duration: durationLabel,
       totalDuration: durationLabel,
-      nightlyRate: bookingMode === 'NIGHTLY' ? defaultNightlyRate : undefined,
-      rate_applied: bookingMode === 'HOURLY' ? defaultHourlyRate : defaultNightlyRate,
       rateApplied: bookingMode === 'HOURLY' ? defaultHourlyRate : defaultNightlyRate,
-      subtotal_amount: subtotalAmount,
-      subtotalAmount: subtotalAmount,
-      discount_type: discountType,
       discountType: discountType,
-      discount_value: discountValue,
       discountValue: discountValue,
-      discount_amount: discountAmount,
-      discountAmount: discountAmount,
-      tax_rate: taxRate,
       taxRate: taxRate,
-      tax_amount: taxAmount,
-      taxAmount: taxAmount,
       totalAmount: finalTotalAmount,
-      initialPayment: initialPayment,
-      notes: notes,
+      paidAmount: initialPayment,
+      notes: notes.trim() || undefined,
     };
 
     try {
-      await onSubmit(payload);
+      await onSubmit(cleanPayload);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to create reservation.');
@@ -332,20 +342,50 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
             </div>
           </div>
 
-          {/* Room Selection */}
-          <div className="space-y-1 pt-1">
-            <label className="text-xs font-semibold text-slate-700">Room Unit Selection *</label>
-            <select
-              value={selectedRoomId}
-              onChange={(e) => setSelectedRoomId(e.target.value)}
-              className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              {rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  Room {r.roomNumber} — {r.room_type_name} ({formatPKR(r.base_price)}/nt | {formatPKR(r.hourly_rate)}/hr)
-                </option>
-              ))}
-            </select>
+          {/* Property & Room Selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                <span>Property *</span>
+                {!isAdmin && (
+                  <span className="text-[10px] text-slate-400 font-normal">(Assigned)</span>
+                )}
+              </label>
+              <select
+                value={selectedPropertyId}
+                disabled={!isAdmin && properties.length <= 1}
+                onChange={(e) => setSelectedPropertyId(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-75 disabled:cursor-not-allowed"
+              >
+                {properties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                <span>Available Room *</span>
+                {isLoadingRooms && <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />}
+              </label>
+              <select
+                value={selectedRoomId}
+                onChange={(e) => setSelectedRoomId(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                {availableRooms.length === 0 ? (
+                  <option value="">No available rooms in property</option>
+                ) : (
+                  availableRooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      Room {r.roomNumber} — {r.roomTypeName} ({formatPKR(r.basePrice)}/nt)
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
           {/* Conditional Mode Form Controls */}
@@ -681,9 +721,16 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
               type="submit"
               size="sm"
               disabled={isSubmitting}
-              className="h-9 px-5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs"
+              className="h-9 px-5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
             >
-              {isSubmitting ? 'Confirming Reservation...' : 'Confirm Reservation'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Confirming Reservation...</span>
+                </>
+              ) : (
+                <span>Confirm Reservation</span>
+              )}
             </Button>
           </div>
         </form>

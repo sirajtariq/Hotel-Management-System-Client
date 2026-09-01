@@ -19,25 +19,42 @@ export interface MenuItemVariation {
 
 export interface MenuItem {
   id: number;
-  category: number;
+  category: number | { id?: number; name?: string };
   category_name?: string;
+  categoryName?: string;
   name: string;
   description?: string;
-  base_price: number | string;
-  has_variations: boolean;
-  is_available: boolean;
+  base_price?: number | string;
+  basePrice?: number | string;
+  price?: number | string;
+  has_variations?: boolean;
+  hasVariations?: boolean;
+  is_available?: boolean;
+  isAvailable?: boolean;
+  is_active?: boolean;
+  isActive?: boolean;
   image_url?: string;
+  imageUrl?: string;
   variations?: MenuItemVariation[];
 }
 
 export interface DiningTable {
   id: number;
-  property: number;
+  property?: number;
   property_name?: string;
   table_number: string;
+  name?: string;
+  number?: string;
   capacity: number;
   floor_or_section: string;
   status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';
+  active_order?: {
+    id: number;
+    order_number: string;
+    customer_name?: string;
+    server_name?: string;
+    grand_total: string | number;
+  } | null;
 }
 
 export interface RestaurantOrderItem {
@@ -174,15 +191,19 @@ export const restaurantService = {
   getMenuItems: async (params?: { category_id?: number; search?: string; available_only?: boolean; page?: number; page_size?: number }): Promise<{ items: MenuItem[]; totalCount: number }> => {
     try {
       const res = await apiClient.get('/restaurant/items/', { params });
-      if (res.data && Array.isArray(res.data.results)) {
+      const rawList = res.data && Array.isArray(res.data.results) ? res.data.results : Array.isArray(res.data) ? res.data : [];
+      const count = res.data?.count ?? rawList.length;
+      const normalizedItems = rawList.map((item: any) => {
+        const isAvail = typeof item.is_available === 'boolean' ? item.is_available : typeof item.isAvailable === 'boolean' ? item.isAvailable : typeof item.is_active === 'boolean' ? item.is_active : true;
         return {
-          items: res.data.results,
-          totalCount: res.data.count ?? res.data.results.length,
+          ...item,
+          is_available: isAvail,
+          isAvailable: isAvail,
+          is_active: isAvail,
+          isActive: isAvail,
         };
-      } else if (Array.isArray(res.data)) {
-        return { items: res.data, totalCount: res.data.length };
-      }
-      return { items: [], totalCount: 0 };
+      });
+      return { items: normalizedItems, totalCount: count };
     } catch {
       return { items: [], totalCount: 0 };
     }
@@ -198,9 +219,16 @@ export const restaurantService = {
   deleteMenuItem: async (id: number): Promise<void> => {
     await apiClient.delete(`/restaurant/items/${id}/`);
   },
-  toggleItemAvailability: async (id: number): Promise<{ id: number; name: string; is_available: boolean }> => {
+  toggleItemAvailability: async (id: number): Promise<MenuItem> => {
     const res = await apiClient.post(`/restaurant/items/${id}/toggle_availability/`);
-    return res.data;
+    const isAvail = typeof res.data.is_available === 'boolean' ? res.data.is_available : typeof res.data.isAvailable === 'boolean' ? res.data.isAvailable : false;
+    return {
+      ...res.data,
+      is_available: isAvail,
+      isAvailable: isAvail,
+      is_active: isAvail,
+      isActive: isAvail,
+    };
   },
 
   // Dining Tables
@@ -265,6 +293,10 @@ export const restaurantService = {
   },
   getReceiptData: async (id: number): Promise<ReceiptData> => {
     const res = await apiClient.get(`/restaurant/orders/${id}/receipt_data/`);
+    return res.data;
+  },
+  cancelOrder: async (id: number): Promise<RestaurantOrder> => {
+    const res = await apiClient.post(`/restaurant/orders/${id}/cancel_order/`);
     return res.data;
   },
 };

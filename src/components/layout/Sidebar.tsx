@@ -1,11 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Building,
-  BedDouble,
   CalendarCheck,
   Receipt,
-  Users,
   BarChart3,
   ShieldCheck,
   Building2,
@@ -14,8 +11,7 @@ import {
   X,
   UtensilsCrossed,
   ChefHat,
-  BookOpen,
-  Grid3X3,
+  Settings2,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -36,7 +32,7 @@ function SidebarNavItem({ item, onClick }: { item: NavItemData; onClick?: () => 
       onClick={onClick}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-medium transition-colors',
+          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
           isActive
             ? 'bg-indigo-900 text-white font-semibold shadow-xs'
             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -65,34 +61,42 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     ? 'SaaS Platform Control'
     : (activeTenant?.name || user?.availableTenants?.[0]?.name || 'Hotel Management System');
 
+  // SuperAdmin Navigation
   const saNavItems: NavItemData[] = [
     { name: 'Tenants & Subscriptions', to: '/tenants', icon: Building2 },
     { name: 'Platform Analytics & MRR', to: '/platform-analytics', icon: TrendingUp },
     { name: 'System Users', to: '/users', icon: UserCog },
   ];
 
-  const tenantNavItems: NavItemData[] = [
+  // Operations Navigation Group
+  const operationsNavItems: NavItemData[] = [
     { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-    { name: 'Properties', to: '/properties', icon: Building, perm: 'properties:view' },
-    { name: 'Rooms & Matrix', to: '/rooms', icon: BedDouble, perm: 'rooms:view' },
-    { name: 'Bookings', to: '/bookings', icon: CalendarCheck, perm: 'bookings:view' },
-    { name: 'Restaurant & POS', to: '/restaurant/pos', icon: UtensilsCrossed, perm: 'restaurant:pos' },
-    { name: 'Expenses', to: '/expenses', icon: Receipt, perm: 'expenses:view' },
-    { name: 'Staff Roster', to: '/staff', icon: Users, perm: 'staff:view' },
+    { name: 'Bookings & Front Desk', to: '/bookings', icon: CalendarCheck, perm: 'bookings:view' },
+    { name: 'Restaurant POS', to: '/restaurant/pos', icon: UtensilsCrossed, perm: 'restaurant:pos' },
+    { name: 'Kitchen Display', to: '/restaurant/kitchen', icon: ChefHat, perm: 'restaurant:kitchen' },
+    { name: 'Daily Expenses', to: '/expenses', icon: Receipt, perm: 'expenses:view' },
     { name: 'Financial Reports', to: '/reports', icon: BarChart3, perm: 'reports:view_pnl' },
-    { name: 'Roles & Access', to: '/roles', icon: ShieldCheck, perm: 'roles:manage' },
   ];
 
-  const baseNavItems = isPureSuperAdmin ? saNavItems : tenantNavItems;
-  const visibleNavItems = baseNavItems.filter((item) => hasPermission(item.perm));
+  // Administration Check: Single entry point
+  const isTenantAdmin =
+    isPureSuperAdmin ||
+    roleUpper === 'TENANT_ADMIN' ||
+    roleUpper === 'SUPERADMIN' ||
+    hasPermission('properties:manage') ||
+    hasPermission('roles:manage') ||
+    hasPermission('staff:manage') ||
+    hasPermission('properties:view');
+
+  const visibleOps = operationsNavItems.filter((item) => hasPermission(item.perm));
 
   const sidebarContent = (
-    <div className="flex flex-col justify-between h-full">
+    <div className="flex flex-col justify-between h-full font-sans">
       <div className="flex flex-col gap-4 p-4">
-        {/* Brand header */}
+        {/* Brand Header */}
         <div className="flex items-center justify-between px-2 py-1">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="h-7 w-7 rounded-md bg-indigo-900 flex items-center justify-center text-white shrink-0">
+            <div className="h-7 w-7 rounded-lg bg-indigo-900 flex items-center justify-center text-white shrink-0">
               <ShieldCheck className="h-4 w-4" />
             </div>
 
@@ -106,7 +110,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           </div>
 
-          {/* Close button for mobile */}
           {onClose && (
             <button
               type="button"
@@ -118,17 +121,47 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </div>
 
-        {/* Navigation links */}
-        <nav className="flex flex-col gap-0.5 mt-2">
-          {visibleNavItems.map((item) => (
-            <SidebarNavItem key={item.to} item={item} onClick={onClose} />
-          ))}
+        {/* Navigation Links */}
+        <nav className="flex flex-col gap-4 mt-2">
+          {isPureSuperAdmin ? (
+            <div className="space-y-1">
+              {saNavItems.map((item) => (
+                <SidebarNavItem key={item.to} item={item} onClick={onClose} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Operations Section */}
+              <div className="space-y-1">
+                <div className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+                  Operations
+                </div>
+                {visibleOps.map((item) => (
+                  <SidebarNavItem key={item.to} item={item} onClick={onClose} />
+                ))}
+              </div>
+
+              {/* Single Entry Administration Link */}
+              {isTenantAdmin && (
+                <div className="space-y-1 pt-2 border-t border-slate-100">
+                  <SidebarNavItem
+                    item={{
+                      name: 'Administration',
+                      to: '/administration',
+                      icon: Settings2,
+                    }}
+                    onClick={onClose}
+                  />
+                </div>
+              )}
+            </>
+          )}
         </nav>
       </div>
 
-      {/* Footer info */}
+      {/* Footer Info */}
       <div className="p-4 border-t border-slate-100">
-        <div className="rounded-md bg-slate-50 border border-slate-200/80 p-2.5 text-[11px] text-slate-500">
+        <div className="rounded-lg bg-slate-50 border border-slate-200/80 p-2.5 text-[11px] text-slate-500">
           <div className="font-semibold text-slate-700">System Mode</div>
           <div>{isPureSuperAdmin ? 'Platform Management' : 'PKR Currency Standard'}</div>
         </div>
@@ -155,4 +188,3 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
-

@@ -183,6 +183,22 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
   const discountAmount = Number(booking.discount_amount || booking.discountAmount) || 0;
   const isPaidInFull = remainingAmount === 0;
 
+  const propertyAddress = (booking as any).property_address || (booking as any).propertyAddress || (booking as any).property_data?.address || '';
+  const propertyCity = (booking as any).property_city || (booking as any).propertyCity || (booking as any).property_data?.city || '';
+  const propertyPhone = (booking as any).property_phone || (booking as any).propertyPhone || (booking as any).property_data?.phone || '';
+  const propertyEmail = (booking as any).property_email || (booking as any).propertyEmail || (booking as any).property_data?.email || '';
+
+  const restaurantOrders = booking.restaurant_orders || booking.restaurantOrders || [];
+  const totalRestaurantCharges = Number(booking.total_restaurant_charges || booking.totalRestaurantCharges) || 
+    restaurantOrders.reduce((sum: number, o: any) => sum + (Number(o.grand_total || o.grandTotal) || 0), 0);
+
+  const totalRefunded = Number(booking.total_refunded || booking.totalRefunded) || 0;
+  const netPaid = Number((booking as any).paid_amount || booking.paidAmount) || 0;
+  const totalPaid = Number((booking as any).gross_paid || (booking as any).grossPaid) || (netPaid + totalRefunded);
+  const roomStayCharges = Number((booking as any).room_stay_charges || (booking as any).roomStayCharges) || Math.max(0, totalAmount - totalRestaurantCharges);
+  const totalFolioBill = totalAmount;
+  const balanceDue = Number((booking as any).balance_due || (booking as any).balanceDue) || Math.max(0, totalFolioBill - netPaid);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl p-0 overflow-hidden bg-slate-100 max-h-[92vh] flex flex-col">
@@ -246,16 +262,19 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                 <div className="flex items-start justify-between border-b border-slate-200 pb-5">
                   <div>
                     <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none uppercase">
-                      {booking.propertyName || 'Pearl Continental & Serviced Suites'}
+                      {booking.propertyName || 'Hotel Management System'}
                     </h1>
-                    <p className="text-xs text-slate-500 font-medium mt-1">
-                      {booking.propertyAddress || 'Block 4, Clifton, Club Road'} • {booking.propertyCity || 'Karachi, Pakistan'}
-                    </p>
-                    <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-2">
-                      <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +92 21 111 505 505</span>
-                      <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> info@{(booking.tenantName || booking.propertyName || 'hotel').toLowerCase().replace(/[^a-z0-9]/g, '')}.com</span>
-                    </div>
-
+                    {(propertyAddress || propertyCity) && (
+                      <p className="text-xs text-slate-500 font-medium mt-1">
+                        {[propertyAddress, propertyCity].filter(Boolean).join(' • ')}
+                      </p>
+                    )}
+                    {(propertyPhone || propertyEmail) && (
+                      <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-2">
+                        {propertyPhone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {propertyPhone}</span>}
+                        {propertyEmail && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {propertyEmail}</span>}
+                      </div>
+                    )}
                   </div>
 
                   <div className="text-right">
@@ -305,7 +324,7 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                 </div>
 
                 {/* Itemized Charges Table */}
-                <div>
+                <div className="space-y-4">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b-2 border-slate-300 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -322,7 +341,7 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                           <div className="text-[11px] text-slate-500">
                             {String(booking.booking_type || booking.bookingType).toUpperCase() === 'HOURLY'
                               ? 'Hourly Short Stay Use'
-                              : 'Nightly Stay & Room Services'}
+                              : 'Nightly Stay & Room Accommodations'}
                           </div>
                         </td>
                         <td className="py-3 text-center font-mono font-medium">
@@ -357,26 +376,81 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                       )}
                     </tbody>
                   </table>
+
+                  {/* Restaurant POS Orders Breakdown */}
+                  {restaurantOrders.length > 0 && (
+                    <div className="pt-2 border-t border-slate-200">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                        <span>Restaurant & Room Service Charges (POS Orders)</span>
+                        <span className="text-[11px] font-mono text-indigo-900">Total POS: {formatPKR(totalRestaurantCharges)}</span>
+                      </div>
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase">
+                            <th className="py-1">Order #</th>
+                            <th className="py-1 text-center">Type / Items</th>
+                            <th className="py-1 text-center">Payment Status</th>
+                            <th className="py-1 text-right">Amount (PKR)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {restaurantOrders.map((ord: any) => (
+                            <tr key={ord.id} className="text-slate-700">
+                              <td className="py-1.5 font-mono font-bold text-indigo-900">{ord.order_number || ord.orderNumber}</td>
+                              <td className="py-1.5 text-center text-slate-500">{ord.order_type || ord.orderType} ({ord.items_count || ord.itemsCount || 1} items)</td>
+                              <td className="py-1.5 text-center">
+                                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
+                                  {ord.payment_status || ord.paymentStatus || 'BILLED_TO_ROOM'}
+                                </span>
+                              </td>
+                              <td className="py-1.5 text-right font-mono font-bold">{formatPKR(ord.grand_total || ord.grandTotal || 0)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* Totals Summary Ledger */}
                 <div className="flex justify-end pt-2">
-                  <div className="w-72 bg-slate-50 rounded-lg p-3.5 border border-slate-200 text-xs space-y-2">
+                  <div className="w-72 bg-slate-50 rounded-lg p-3.5 border border-slate-200 text-xs space-y-2 font-sans">
                     <div className="flex justify-between text-slate-600">
-                      <span>Total Stay Charges:</span>
-                      <span className="font-mono font-bold text-slate-900 tabular-nums">{formatPKR(totalAmount)}</span>
+                      <span>Room Stay Charges:</span>
+                      <span className="font-mono font-bold text-slate-900 tabular-nums">{formatPKR(roomStayCharges)}</span>
+                    </div>
+                    {totalRestaurantCharges > 0 && (
+                      <div className="flex justify-between text-indigo-900 font-medium">
+                        <span>Restaurant POS Charges:</span>
+                        <span className="font-mono font-bold tabular-nums">+{formatPKR(totalRestaurantCharges)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1">
+                      <span>Total Folio Bill:</span>
+                      <span className="font-mono tabular-nums">{formatPKR(totalFolioBill)}</span>
                     </div>
                     <div className="flex justify-between text-emerald-700 font-medium">
-                      <span>Total Amount Paid:</span>
-                      <span className="font-mono font-bold tabular-nums">-{formatPKR(paidAmount)}</span>
+                      <span>Total Advance/Paid:</span>
+                      <span className="font-mono font-bold tabular-nums">-{formatPKR(totalPaid)}</span>
                     </div>
-                    <hr className="border-slate-200" />
-                    <div className="flex justify-between items-center text-sm font-black">
-                      <span className={isPaidInFull ? 'text-emerald-800' : 'text-rose-700'}>
-                        {isPaidInFull ? 'Balance Paid:' : 'Balance Due:'}
+                    {totalRefunded > 0 && (
+                      <>
+                        <div className="flex justify-between text-rose-600 font-medium">
+                          <span>Refunded:</span>
+                          <span className="font-mono font-bold tabular-nums">+{formatPKR(totalRefunded)}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-800 font-semibold border-t border-slate-100 pt-1">
+                          <span>Net Paid:</span>
+                          <span className="font-mono font-bold tabular-nums">-{formatPKR(netPaid)}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex justify-between items-center text-sm font-black border-t-2 border-slate-300 pt-1.5">
+                      <span className={balanceDue === 0 ? 'text-emerald-800' : 'text-rose-700'}>
+                        {balanceDue === 0 ? 'Balance Paid:' : 'Balance Due:'}
                       </span>
-                      <span className={`font-mono tabular-nums ${isPaidInFull ? 'text-emerald-800' : 'text-rose-700'}`}>
-                        {formatPKR(remainingAmount)}
+                      <span className={`font-mono tabular-nums ${balanceDue === 0 ? 'text-emerald-800' : 'text-rose-700'}`}>
+                        {formatPKR(balanceDue)}
                       </span>
                     </div>
                   </div>
@@ -427,11 +501,31 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                 {/* Charges */}
                 <div className="space-y-1 text-[11px]">
                   <div className="flex justify-between font-bold">
-                    <span>STAY TOTAL ({booking.totalNights}N):</span>
+                    <span>ROOM STAY ({booking.totalNights}N):</span>
+                    <span>{formatPKR(totalAmount - totalRestaurantCharges)}</span>
+                  </div>
+                  {totalRestaurantCharges > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span>POS & ROOM SERVICE:</span>
+                      <span>+{formatPKR(totalRestaurantCharges)}</span>
+                    </div>
+                  )}
+                  {restaurantOrders.length > 0 && (
+                    <div className="text-[9px] text-slate-600 pl-2 space-y-0.5 border-l border-slate-300">
+                      {restaurantOrders.map((ord: any) => (
+                        <div key={ord.id} className="flex justify-between">
+                          <span>{ord.order_number || ord.orderNumber}:</span>
+                          <span>{formatPKR(ord.grand_total || ord.grandTotal || 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold border-t border-dashed border-slate-300 pt-0.5">
+                    <span>TOTAL FOLIO BILL:</span>
                     <span>{formatPKR(totalAmount)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>PAID ADVANCE:</span>
+                  <div className="flex justify-between text-slate-700">
+                    <span>PAID AMOUNT:</span>
                     <span>-{formatPKR(paidAmount)}</span>
                   </div>
                   <div className="text-[10px] tracking-widest">--------------------------------</div>

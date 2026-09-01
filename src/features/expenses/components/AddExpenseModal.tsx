@@ -1,111 +1,308 @@
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
-import { CreateExpenseInput } from '@/types/expenses';
-
-const expenseSchema = z.object({
-  propertyId: z.string().min(1, 'Property required'),
-  title: z.string().min(2, 'Title required'),
-  category: z.enum(['utilities', 'maintenance', 'supplies', 'salaries', 'marketing', 'taxes', 'miscellaneous']),
-  amount: z.coerce.number().min(1, 'Amount must be greater than 0'),
-  date: z.string().min(1, 'Date required'),
-  paidTo: z.string().min(2, 'Vendor/Payee required'),
-  receiptNumber: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type ExpenseFormValues = z.infer<typeof expenseSchema>;
+import { CreateExpenseInput, AccountHead, PaymentMethod } from '@/types/expenses';
+import { PaymentAccount } from '@/types/accounts';
+import { expenseService } from '../services/expenseService';
+import { accountService } from '@/features/accounts/services/accountService';
+import { propertyService } from '@/features/properties/services/propertyService';
+import { Property } from '@/types/properties';
+import { toast } from '@/components/ui/ToastProvider';
+import { Banknote, CreditCard, Building2, Wallet, Plus, Tag, Calendar, Receipt, FileText, Loader2 } from 'lucide-react';
+import { usePropertySelector } from '@/features/properties/hooks/usePropertySelector';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateExpenseInput) => Promise<void>;
+  onOpenManageHeads?: () => void;
 }
 
-export function AddExpenseModal({ isOpen, onClose, onSubmit }: AddExpenseModalProps) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<ExpenseFormValues>({
-    resolver: zodResolver(expenseSchema),
-    defaultValues: {
-      propertyId: 'prop_01',
-      category: 'utilities',
-      date: new Date().toISOString().split('T')[0],
-      amount: 15000,
-    },
-  });
+const PAYMENT_METHODS: { key: PaymentMethod; label: string; icon: any }[] = [
+  { key: 'CASH', label: 'Cash Drawer', icon: Banknote },
+  { key: 'BANK_TRANSFER', label: 'Bank Transfer', icon: Building2 },
+  { key: 'CARD', label: 'Card / POS', icon: CreditCard },
+  { key: 'ONLINE', label: 'Online Wallet', icon: Wallet },
+];
 
-  const handleFormSubmit = async (data: ExpenseFormValues) => {
-    await onSubmit(data as CreateExpenseInput);
-    reset();
-    onClose();
+export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }: AddExpenseModalProps) {
+  const { data: cachedProperties = [] } = usePropertySelector();
+
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [accountHeads, setAccountHeads] = useState<AccountHead[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | ''>('');
+  const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+
+  // Form State
+  const [propertyId, setPropertyId] = useState<string>('');
+  const [accountHeadId, setAccountHeadId] = useState<number | ''>('');
+  const [amount, setAmount] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+  const [paidTo, setPaidTo] = useState<string>('');
+  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [receiptNumber, setReceiptNumber] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const loadMetadata = async () => {
+    setIsLoadingMeta(true);
+    try {
+      const [heads, accs] = await Promise.all([
+        expenseService.getAccountHeads(),
+        accountService.getPaymentAccounts(),
+      ]);
+      const props = cachedProperties.length > 0 ? (cachedProperties as Property[]) : await propertyService.getProperties();
+      setProperties(props);
+      if (props.length > 0 && !propertyId) {
+        setPropertyId(String(props[0].id));
+      }
+      setAccountHeads(heads.filter((h) => h.is_active));
+      if (heads.length > 0) {
+        const activeFirst = heads.find((h) => h.is_active);
+        if (activeFirst) setAccountHeadId(activeFirst.id);
+      }
+      setPaymentAccounts(accs);
+      if (accs.length > 0) {
+        setSelectedAccountId(accs[0].id);
+      }
+    } catch {
+      toast.error('Load Error', 'Failed to load expense configuration.');
+    } finally {
+      setIsLoadingMeta(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadMetadata();
+      setAmount('');
+      setPaidTo('');
+      setReceiptNumber('');
+      setNotes('');
+      setDate(new Date().toISOString().split('T')[0]);
+      setPaymentMethod('CASH');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!propertyId) {
+      toast.error('Validation Error', 'Please select a hotel property.');
+      return;
+    }
+    if (!accountHeadId) {
+      toast.error('Validation Error', 'Please select an Account Head.');
+      return;
+    }
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      toast.error('Validation Error', 'Expense amount must be greater than PKR 0.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        propertyId,
+        accountHeadId: Number(accountHeadId),
+        amount: numAmount,
+        date,
+        paymentMethod,
+        paidTo: paidTo.trim(),
+        receiptNumber: receiptNumber.trim(),
+        notes: notes.trim(),
+      });
+      onClose();
+    } catch (err: any) {
+      toast.error('Submission Failed', err.message || 'Could not record expense.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Log Operating Expense</DialogTitle>
-          <DialogDescription>Record property operational expenditure in PKR</DialogDescription>
+      <DialogContent className="max-w-md p-6 bg-white rounded-2xl border border-slate-200 shadow-2xl">
+        <DialogHeader className="pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-lg bg-indigo-900 text-white flex items-center justify-center font-bold">
+              <Receipt className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900 tracking-tight">
+                Record Operating Expense
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Log Operational Outflow (OPEX) under specific Account Head
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-3.5 mt-2">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs mt-2">
+          {/* Property Select */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Expense Title</label>
-            <Input {...register('title')} placeholder="Electricity Bill / AC Servicing" className="text-xs" />
-            {errors.title && <p className="text-[11px] text-rose-600">{errors.title.message}</p>}
+            <label className="block font-semibold text-slate-700">Property / Branch *</label>
+            <select
+              value={propertyId}
+              onChange={(e) => setPropertyId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+              required
+            >
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.city})
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Account Head Select */}
+          <div className="space-y-1">
+            <label className="block font-semibold text-slate-700">Account Head (Expense Khata) *</label>
+
+            <select
+              value={accountHeadId}
+              onChange={(e) => setAccountHeadId(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 font-semibold focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+              required
+            >
+              {accountHeads.length === 0 ? (
+                <option value="">No Active Account Heads Found</option>
+              ) : (
+                accountHeads.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {/* Amount & Date */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Category</label>
-              <Select {...register('category')} className="text-xs">
-                <option value="utilities">Power & Utilities</option>
-                <option value="maintenance">Facility Maintenance</option>
-                <option value="supplies">Housekeeping Supplies</option>
-                <option value="salaries">Staff Wages / Salary</option>
-                <option value="marketing">Marketing & OTA Ads</option>
-                <option value="taxes">Local Property Taxes</option>
-                <option value="miscellaneous">Miscellaneous</option>
-              </Select>
+              <label className="block font-semibold text-slate-700">Amount (PKR) *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs">Rs</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="pl-8 text-xs font-mono font-bold text-rose-700 bg-white"
+                  required
+                />
+              </div>
             </div>
+
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Amount (PKR)</label>
-              <Input {...register('amount')} type="number" className="text-xs font-mono font-semibold" />
-              {errors.amount && <p className="text-[11px] text-rose-600">{errors.amount.message}</p>}
+              <label className="block font-semibold text-slate-700">Expense Date *</label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="text-xs bg-white"
+                required
+              />
             </div>
           </div>
 
+          {/* Payment Method Pills */}
+          <div className="space-y-1.5">
+            <label className="block font-semibold text-slate-700">Payment Mode *</label>
+            <div className="grid grid-cols-2 gap-2">
+              {PAYMENT_METHODS.map((pm) => {
+                const Icon = pm.icon;
+                const isSelected = paymentMethod === pm.key;
+                return (
+                  <button
+                    key={pm.key}
+                    type="button"
+                    onClick={() => setPaymentMethod(pm.key)}
+                    className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-indigo-900 text-white border-indigo-900 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${isSelected ? 'text-white' : 'text-slate-500'}`} />
+                    <span className="text-[11px] font-bold">{pm.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Paid From Payment Account */}
+          <div className="space-y-1">
+            <label className="block font-semibold text-slate-700">Paid From Account *</label>
+            <select
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+            >
+              {paymentAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Paid To / Vendor & Receipt # */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Paid To / Vendor</label>
-              <Input {...register('paidTo')} placeholder="Vendor Name" className="text-xs" />
-              {errors.paidTo && <p className="text-[11px] text-rose-600">{errors.paidTo.message}</p>}
+              <label className="block font-semibold text-slate-700">Paid To / Vendor</label>
+              <Input
+                placeholder="e.g. PSO Station, Metro Cash"
+                value={paidTo}
+                onChange={(e) => setPaidTo(e.target.value)}
+                className="text-xs bg-white"
+              />
             </div>
+
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Receipt / Ref #</label>
-              <Input {...register('receiptNumber')} placeholder="OPT-1029" className="text-xs font-mono" />
+              <label className="block font-semibold text-slate-700">Receipt / Bill #</label>
+              <Input
+                placeholder="e.g. INV-9901"
+                value={receiptNumber}
+                onChange={(e) => setReceiptNumber(e.target.value)}
+                className="text-xs font-mono bg-white"
+              />
             </div>
           </div>
 
+          {/* Description / Notes */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Date Paid</label>
-            <Input {...register('date')} type="date" className="text-xs" />
+            <label className="block font-semibold text-slate-700">Description / Notes</label>
+            <textarea
+              rows={2}
+              placeholder="Additional expense breakdown or comments..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+            />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs">
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? 'Posting...' : 'Log Expense'}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isSubmitting || isLoadingMeta}
+              className="text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-bold px-4 gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>{isSubmitting ? 'Posting Expense...' : 'Post Expense'}</span>
             </Button>
           </div>
         </form>

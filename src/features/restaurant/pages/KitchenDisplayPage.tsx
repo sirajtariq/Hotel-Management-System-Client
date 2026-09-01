@@ -1,16 +1,22 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRestaurantOrders } from '../hooks/useRestaurantOrders';
 import { KitchenOrderCard } from '../components/kitchen/KitchenOrderCard';
 import { KitchenKDSSkeleton } from '../components/skeletons/KitchenKDSSkeleton';
-import { RestaurantHeaderNav } from '../components/RestaurantHeaderNav';
 import { ChefHat, RefreshCw, Flame, CheckCircle2, Utensils } from 'lucide-react';
 
 export function KitchenDisplayPage() {
+  const queryClient = useQueryClient();
   const [filterTab, setFilterTab] = useState<'ALL' | 'PENDING' | 'PREPARING' | 'READY'>('ALL');
   const { orders, loading, refetchOrders, updateKitchenStatus } = useRestaurantOrders({
     active_kitchen: true,
-    autoRefreshMs: 10000,
+    autoRefreshMs: 20000,
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['restaurant-orders'] });
+    refetchOrders();
+  };
 
   const filteredOrders = orders.filter((o) => {
     if (filterTab === 'ALL') return true;
@@ -25,9 +31,6 @@ export function KitchenDisplayPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
-      {/* Top Restaurant Navigation Bar */}
-      <RestaurantHeaderNav />
-
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">
@@ -45,10 +48,10 @@ export function KitchenDisplayPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => refetchOrders()}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 shadow-xs transition-colors"
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 shadow-xs transition-colors cursor-pointer"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>

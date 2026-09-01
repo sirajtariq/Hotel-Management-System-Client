@@ -128,9 +128,9 @@ export function DashboardPage() {
               {/* Card 1: Today's Revenue */}
               <BiMetricCard
                 title="Today's Revenue"
-                value={formatPKR(analytics.kpis.today_revenue)}
-                subtitle={`Period: ${formatPKR(analytics.kpis.period_revenue)}`}
-                trend={analytics.kpis.revenue_trend}
+                value={formatPKR(analytics?.kpis?.today_revenue ?? 0)}
+                subtitle={`Period: ${formatPKR(analytics?.kpis?.period_revenue ?? 0)}`}
+                trend={analytics?.kpis?.revenue_trend ?? 0}
                 icon={DollarSign}
                 theme="emerald"
               />
@@ -138,9 +138,9 @@ export function DashboardPage() {
               {/* Card 2: Occupancy Rate */}
               <BiMetricCard
                 title="Occupancy Rate"
-                value={`${analytics.kpis.occupancy_rate}%`}
-                subtitle={`${analytics.kpis.occupied_rooms} / ${analytics.kpis.total_rooms} Rooms Booked`}
-                trend={analytics.kpis.occupancy_trend}
+                value={`${analytics?.kpis?.occupancy_rate ?? 0}%`}
+                subtitle={`${analytics?.kpis?.occupied_rooms ?? 0} / ${analytics?.kpis?.total_rooms ?? 0} Rooms Booked`}
+                trend={analytics?.kpis?.occupancy_trend ?? 0}
                 icon={Hotel}
                 theme="blue"
               />
@@ -148,7 +148,7 @@ export function DashboardPage() {
               {/* Card 3: Today's Check-Ins */}
               <BiMetricCard
                 title="Today's Check-Ins"
-                value={`${analytics.operations_pulse.today_arrivals.length}`}
+                value={`${analytics?.operations_pulse?.today_arrivals?.length ?? 0}`}
                 subtitle="Arrivals scheduled today"
                 icon={LogIn}
                 theme="indigo"
@@ -157,7 +157,7 @@ export function DashboardPage() {
               {/* Card 4: Housekeeping Alert */}
               <BiMetricCard
                 title="Housekeeping Alert"
-                value={`${analytics.operations_pulse.dirty_rooms_count}`}
+                value={`${analytics?.operations_pulse?.dirty_rooms_count ?? 0}`}
                 subtitle="Dirty rooms pending cleaning"
                 icon={AlertCircle}
                 theme="amber"

@@ -1,60 +1,48 @@
 import { apiClient } from '@/lib/axios';
 import { LoginCredentials, AuthResponse, User } from '@/types/auth';
 
-const MOCK_USER: User = {
-  id: 'usr_101',
-  email: 'admin@apexhotels.com',
-  firstName: 'Tariq',
-  lastName: 'Manager',
-  role: 'tenant_admin',
-  tenantId: 'tenant_01',
-  tenantName: 'Pearl Continental & Serviced Suites',
-  availableTenants: [
-    {
-      id: 'tenant_01',
-      name: 'Pearl Continental & Serviced Suites',
-      code: 'PCSS',
-      activePropertiesCount: 4,
-    },
-    {
-      id: 'tenant_02',
-      name: 'Grand Horizon Apartments & Spa',
-      code: 'GHAS',
-      activePropertiesCount: 2,
-    },
-  ],
-};
-
 function normalizeUser(data: any): User {
-  if (!data) return MOCK_USER;
-
-  const userObj = data.user || data;
+  const userObj = data.user || data || {};
   const tenants = userObj.availableTenants || (userObj.tenant_details ? [{
-    id: String(userObj.tenant_details.id || 'tenant_01'),
-    name: userObj.tenant_details.name || 'Main Tenant',
+    id: String(userObj.tenant_details.id || ''),
+    name: userObj.tenant_details.name || userObj.tenant_name || 'Main Tenant',
     code: userObj.tenant_details.code || 'MAIN',
     activePropertiesCount: 1
-  }] : MOCK_USER.availableTenants);
+  }] : []);
 
-  // Preserve permissions from custom_role or custom_role_details or direct array
   const customRoleData = userObj.custom_role || userObj.custom_role_details || null;
-  const extractedPerms: string[] = Array.isArray(customRoleData?.permissions)
+  const extractedPerms: string[] = Array.isArray(userObj.permissions)
+    ? userObj.permissions
+    : Array.isArray(customRoleData?.permissions)
     ? customRoleData.permissions
     : Array.isArray(userObj.custom_role_permissions)
     ? userObj.custom_role_permissions
-    : Array.isArray(userObj.permissions)
-    ? userObj.permissions
+    : [];
+
+  const fullName = userObj.fullName || userObj.full_name || `${userObj.first_name || userObj.firstName || ''} ${userObj.last_name || userObj.lastName || ''}`.trim() || userObj.username || 'User';
+
+  const assignedProps = Array.isArray(userObj.assignedProperties)
+    ? userObj.assignedProperties
+    : Array.isArray(userObj.assigned_properties)
+    ? userObj.assigned_properties
     : [];
 
   return {
-    id: String(userObj.id || MOCK_USER.id),
-    email: userObj.email || userObj.username || MOCK_USER.email,
+    id: String(userObj.id || ''),
+    username: userObj.username || userObj.email || '',
+    email: userObj.email || userObj.username || '',
     firstName: userObj.first_name || userObj.firstName || userObj.username || 'User',
     lastName: userObj.last_name || userObj.lastName || '',
+    fullName,
     role: userObj.role || 'TENANT_ADMIN',
-    tenantId: String(userObj.tenant || userObj.tenantId || tenants[0]?.id || 'tenant_01'),
-    tenantName: userObj.tenant_details?.name || tenants[0]?.name || 'Hotel Management System',
+    isSuperuser: Boolean(userObj.isSuperuser || userObj.is_superuser || userObj.role === 'SUPERADMIN'),
+    is_superuser: Boolean(userObj.is_superuser || userObj.isSuperuser || userObj.role === 'SUPERADMIN'),
+    tenant: userObj.tenant || userObj.tenantId || null,
+    tenantId: String(userObj.tenant || userObj.tenantId || tenants[0]?.id || ''),
+    tenantName: userObj.tenantName || userObj.tenant_name || userObj.tenant_details?.name || tenants[0]?.name || 'Hotel Management System',
     availableTenants: Array.isArray(tenants) ? tenants : [],
+    assignedProperties: assignedProps,
+    assigned_properties: assignedProps,
     custom_role: customRoleData ? {
       id: String(customRoleData.id),
       name: customRoleData.name,
@@ -71,7 +59,6 @@ export function parseErrorMessage(errorData: any): string {
   if (typeof errorData === 'string') return errorData;
 
   if (typeof errorData === 'object') {
-    // Standard Envelope: { success: false, message: "...", code: "...", errors: ... }
     if (errorData.message && typeof errorData.message === 'string') {
       if (errorData.errors && typeof errorData.errors === 'object' && errorData.code === 'validation_error') {
         const fieldMsgs = Object.entries(errorData.errors)
@@ -114,13 +101,25 @@ export function parseErrorMessage(errorData: any): string {
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
-      const response = await apiClient.post('/users/token/', {
-        username: credentials.email,
-        password: credentials.password,
-      });
+      let response;
+      try {
+        response = await apiClient.post('/auth/login/', {
+          username: credentials.email,
+          password: credentials.password,
+        });
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          response = await apiClient.post('/users/token/', {
+            username: credentials.email,
+            password: credentials.password,
+          });
+        } else {
+          throw err;
+        }
+      }
 
-      const access = response.data.access;
-      const refresh = response.data.refresh;
+      const access = response.data.access || response.data.tokens?.access;
+      const refresh = response.data.refresh || response.data.tokens?.refresh;
       const user = normalizeUser(response.data);
 
       return { access, refresh, user };
@@ -130,30 +129,25 @@ export const authService = {
         throw new Error(msg || 'Invalid username or password credentials.');
       }
 
-      // If backend is completely offline and using default mock admin demo credentials
-      if (credentials.email === 'admin' && credentials.password === 'Admin!@#') {
-        return {
-          access: 'mock_jwt_access_token_12345',
-          refresh: 'mock_jwt_refresh_token_67890',
-          user: {
-            ...MOCK_USER,
-            email: credentials.email || MOCK_USER.email,
-          },
-        };
-      }
-
       throw new Error('Unable to connect to authentication server. Please verify backend service.');
     }
   },
 
-
-
   async getCurrentUser(): Promise<User> {
+    const response = await apiClient.get('/users/me/');
+    return normalizeUser(response.data);
+  },
+
+  async getCurrentUserSession(): Promise<User> {
     try {
-      const response = await apiClient.get('/users/me/');
+      const response = await apiClient.get('/auth/me/');
       return normalizeUser(response.data);
-    } catch {
-      return MOCK_USER;
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        const response = await apiClient.get('/users/me/');
+        return normalizeUser(response.data);
+      }
+      throw err;
     }
   },
 
@@ -174,12 +168,7 @@ export const authService = {
           : String(errorData);
         throw new Error(msg);
       }
-      return {
-        ...MOCK_USER,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-      };
+      throw err;
     }
   },
 

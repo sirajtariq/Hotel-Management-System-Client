@@ -1,4 +1,5 @@
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { checkPermission } from '@/utils/permissions';
 
 const DEFAULT_STAFF_PERMISSIONS = [
   'properties:view',
@@ -29,42 +30,11 @@ export function usePermission(permissionCode?: string | string[] | null) {
     if (!permission) return true;
     if (!user) return false;
 
-    const roleUpper = String(user.role || '').toUpperCase();
-
-    // SuperAdmin and TenantAdmin full bypass
-    if (
-      (user as any).is_superuser ||
-      roleUpper === 'SUPERADMIN' ||
-      roleUpper === 'SUPER_ADMIN' ||
-      roleUpper === 'TENANT_ADMIN' ||
-      roleUpper === 'ADMIN'
-    ) {
-      return true;
-    }
-
-    // Extract permissions array from state
-    let userPerms: string[] = Array.isArray(user.custom_role?.permissions)
-      ? user.custom_role!.permissions
-      : Array.isArray(user.custom_role_permissions)
-      ? user.custom_role_permissions
-      : Array.isArray(user.permissions)
-      ? user.permissions
-      : [];
-
-    // System role fallback when custom_role is not assigned
-    if (userPerms.length === 0) {
-      if (roleUpper === 'STAFF' || roleUpper === 'RECEPTIONIST' || roleUpper === 'HOUSEKEEPING') {
-        userPerms = DEFAULT_STAFF_PERMISSIONS;
-      } else if (roleUpper === 'PROPERTY_MANAGER' || roleUpper === 'MANAGER') {
-        userPerms = DEFAULT_MANAGER_PERMISSIONS;
-      }
-    }
-
     if (Array.isArray(permission)) {
-      return permission.some((p) => userPerms.includes(p));
+      return permission.some((p) => checkPermission(user, p));
     }
 
-    return userPerms.includes(permission);
+    return checkPermission(user, permission);
   };
 
   if (permissionCode !== undefined) {

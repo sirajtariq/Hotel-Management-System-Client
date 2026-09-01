@@ -2,6 +2,7 @@ import { ReceiptData } from '../../services/restaurantService';
 
 interface KitchenReceiptPrintProps {
   receipt: ReceiptData;
+  onClose?: () => void;
 }
 
 export function KitchenReceiptPrint({ receipt }: KitchenReceiptPrintProps) {

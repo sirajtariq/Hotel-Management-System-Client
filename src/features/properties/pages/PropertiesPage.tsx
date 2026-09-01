@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { PropertyFilter } from '../components/PropertyFilter';
 import { PropertyGrid } from '../components/PropertyGrid';
-import { PropertyFormModal } from '../components/PropertyFormModal';
+import { AddEditPropertyModal } from '../components/AddEditPropertyModal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { propertyService } from '../services/propertyService';
 import { Can } from '@/lib/rbac';
 import { toast } from '@/components/ui/ToastProvider';
-import { Property, CreatePropertyInput } from '@/types/properties';
+import { Property } from '@/types/properties';
 
 export function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -18,25 +18,42 @@ export function PropertiesPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+
+  const fetchProperties = async () => {
+    setIsLoading(true);
+    try {
+      const data = await propertyService.getProperties();
+      setProperties(Array.isArray(data) ? data : []);
+    } catch {
+      setProperties([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setIsLoading(true);
-    propertyService
-      .getProperties()
-      .then((data) => {
-        setProperties(Array.isArray(data) ? data : []);
-      })
-      .finally(() => setIsLoading(false));
+    fetchProperties();
   }, []);
 
-  const handleAddProperty = async (data: CreatePropertyInput) => {
+  const handleEditProperty = (prop: Property) => {
+    setEditingProperty(prop);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteProperty = async (prop: Property) => {
     try {
-      const created = await propertyService.createProperty(data);
-      setProperties((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
-      toast.success('Property Registered', `Successfully created ${created.name}`);
+      await propertyService.deleteProperty(prop.id);
+      toast.success('Property Deleted', `Successfully deleted ${prop.name}`);
+      setProperties((prev) => prev.filter((item) => item.id !== prop.id));
     } catch {
-      toast.error('Action Failed', 'Could not create property. Please try again.');
+      toast.error('Action Failed', 'Could not delete property branch.');
     }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingProperty(null);
   };
 
   const safeProperties = Array.isArray(properties) ? properties : [];
@@ -47,21 +64,28 @@ export function PropertiesPage() {
     const matchesSearch =
       nameStr.toLowerCase().includes(search.toLowerCase()) ||
       cityStr.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === 'all' || p.type === typeFilter;
+    const matchesType = typeFilter === 'all' || p.type === typeFilter || p.propertyType === typeFilter;
     return matchesSearch && matchesType;
   });
 
   return (
     <PermissionGuard permission="properties:view" moduleName="Properties & Locations">
-      <div className="space-y-6">
+      <div className="space-y-6 pb-12 font-sans">
         <PageHeader
-          title="Properties & Complexes"
-          description="Multi-tenant property registry, room counts, and location metrics"
+          title="Properties & Branches"
+          description="Multi-tenant property registry, room counts, live occupancy and revenue metrics"
           actions={
             <Can permission="properties:manage">
-              <Button size="sm" className="gap-1.5 text-xs bg-indigo-900 text-white hover:bg-indigo-950" onClick={() => setIsModalOpen(true)}>
+              <Button
+                size="sm"
+                className="gap-1.5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 shadow-xs"
+                onClick={() => {
+                  setEditingProperty(null);
+                  setIsModalOpen(true);
+                }}
+              >
                 <Plus className="h-3.5 w-3.5" />
-                Add New Property
+                <span>Add New Property</span>
               </Button>
             </Can>
           }
@@ -79,7 +103,7 @@ export function PropertiesPage() {
             {Array.from({ length: 6 }).map((_, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4"
+                className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-4"
               >
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2.5">
@@ -101,13 +125,18 @@ export function PropertiesPage() {
             ))}
           </div>
         ) : (
-          <PropertyGrid properties={filteredProperties} />
+          <PropertyGrid
+            properties={filteredProperties}
+            onEdit={handleEditProperty}
+            onDelete={handleDeleteProperty}
+          />
         )}
 
-        <PropertyFormModal
+        <AddEditPropertyModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleAddProperty}
+          onClose={handleModalClose}
+          onSuccess={fetchProperties}
+          propertyToEdit={editingProperty}
         />
       </div>
     </PermissionGuard>

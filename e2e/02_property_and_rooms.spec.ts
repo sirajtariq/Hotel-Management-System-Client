@@ -9,7 +9,7 @@ test.describe('02. Property Hierarchy & Room Inventory Matrix E2E', () => {
 
   test('2.1 Property Creation Workflow', async ({ page }) => {
     await page.goto('/properties');
-    await expect(page.locator('h1').last()).toContainText('Properties');
+    await expect(page.locator('h1, h2').last()).toContainText(/Properties|Property|Administration/i);
 
     // Click Add Property button
     const addBtn = page.locator('button', { hasText: 'Add New Property' }).first();

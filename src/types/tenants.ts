@@ -29,14 +29,21 @@ export interface TenantItem {
 }
 
 export interface TenantMetrics {
-  total_tenants: number;
-  active_tenants: number;
-  inactive_tenants: number;
-  monthly_recurring_revenue: number;
-  one_time_revenue: number;
-  annual_recurring_revenue: number;
+  total_tenants?: number;
+  active_tenants?: number;
+  inactive_tenants?: number;
+  monthly_recurring_revenue?: number;
+  one_time_revenue?: number;
+  annual_recurring_revenue?: number;
   overdue_count?: number;
   due_soon_count?: number;
+  totalTenants?: number;
+  activeTenants?: number;
+  inactiveTenants?: number;
+  monthlyRecurringRevenue?: number;
+  oneTimeRevenue?: number;
+  annualRecurringRevenue?: number;
+  dueSoonCount?: number;
 }
 
 export interface CreateTenantPayload {

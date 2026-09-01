@@ -170,7 +170,7 @@ export function TenantFormModal({
         contact_email: contactEmail.trim(),
         contact_phone: contactPhone.trim(),
         notes: notes.trim(),
-        is_active: initialData ? initialData.is_active : true,
+        is_active: initialData ? (initialData.is_active ?? (initialData as any).isActive ?? true) : true,
         max_properties: unlimitedProperties ? null : (parseInt(maxProperties, 10) || 1),
         max_rooms: unlimitedRooms ? null : (parseInt(maxRooms, 10) || 1),
         max_users: unlimitedUsers ? null : (parseInt(maxUsers, 10) || 1),

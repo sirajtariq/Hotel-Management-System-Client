@@ -4,6 +4,7 @@ import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { RoomFilterBar } from '../components/RoomFilterBar';
 import { RoomGrid } from '../components/RoomGrid';
 import { AddRoomModal } from '../components/AddRoomModal';
+import { RoomDetailsModal } from '../components/RoomDetailsModal';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/button';
 import { Plus, Shield } from 'lucide-react';
@@ -11,7 +12,7 @@ import { roomService } from '../services/roomService';
 import { propertyService } from '@/features/properties/services/propertyService';
 import { Can } from '@/lib/rbac';
 import { toast } from '@/components/ui/ToastProvider';
-import { Room, RoomStatus, CreateRoomInput } from '@/types/rooms';
+import { Room, RoomStatus, HousekeepingStatus, CreateRoomInput } from '@/types/rooms';
 import { Property } from '@/types/properties';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
@@ -29,6 +30,9 @@ export function RoomsPage() {
   const [propertyFilter, setPropertyFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Selected Room for Details Modal
+  const [detailsRoom, setDetailsRoom] = useState<Room | null>(null);
+
   useEffect(() => {
     setIsLoading(true);
     Promise.all([
@@ -42,9 +46,26 @@ export function RoomsPage() {
     try {
       const updated = await roomService.updateRoomStatus(roomId, newStatus);
       setRooms((prev) => (Array.isArray(prev) ? prev : []).map((r) => (r.id === roomId ? updated : r)));
+      if (detailsRoom?.id === roomId) {
+        setDetailsRoom(updated);
+      }
       toast.success('Room Status Updated', `Room ${updated.roomNumber || roomId} is now ${newStatus.toUpperCase()}`);
     } catch {
       toast.error('Update Failed', 'Could not change room status.');
+    }
+  };
+
+  const handleHousekeepingChange = async (roomId: string, newHkStatus: HousekeepingStatus) => {
+    if (isPureSuperAdmin) return;
+    try {
+      const updated = await roomService.updateHousekeepingStatus(roomId, newHkStatus);
+      setRooms((prev) => (Array.isArray(prev) ? prev : []).map((r) => (r.id === roomId ? updated : r)));
+      if (detailsRoom?.id === roomId) {
+        setDetailsRoom(updated);
+      }
+      toast.success('Housekeeping Updated', `Room ${updated.roomNumber || roomId} is now ${newHkStatus}`);
+    } catch {
+      toast.error('Update Failed', 'Could not change housekeeping status.');
     }
   };
 
@@ -56,6 +77,18 @@ export function RoomsPage() {
       toast.success('Room Created', `Room ${created.roomNumber} added successfully`);
     } catch {
       toast.error('Action Failed', 'Could not create room unit.');
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    if (isPureSuperAdmin) return;
+    try {
+      await roomService.deleteRoom(roomId);
+      setRooms((prev) => (Array.isArray(prev) ? prev : []).filter((r) => r.id !== roomId));
+      setDetailsRoom(null);
+      toast.success('Room Deleted', 'Room unit deleted successfully');
+    } catch (err: any) {
+      toast.error('Delete Failed', err?.message || 'Could not delete room unit.');
     }
   };
 
@@ -76,7 +109,7 @@ export function RoomsPage() {
 
   return (
     <PermissionGuard permission="rooms:view" moduleName="Rooms & Inventory">
-      <div className="space-y-6">
+      <div className="space-y-6 font-sans">
         {isPureSuperAdmin && (
           <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3 flex items-center justify-between text-xs text-indigo-900 font-medium">
             <div className="flex items-center gap-2">
@@ -135,14 +168,29 @@ export function RoomsPage() {
             ))}
           </div>
         ) : (
-          <RoomGrid rooms={filteredRooms} onStatusChange={handleStatusChange} />
+          <RoomGrid
+            rooms={filteredRooms}
+            onStatusChange={handleStatusChange}
+            onCardClick={(room) => setDetailsRoom(room)}
+          />
         )}
 
+        {/* Add Room Unit Modal */}
         <AddRoomModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleAddRoom}
           properties={properties}
+        />
+
+        {/* Room Details Modal */}
+        <RoomDetailsModal
+          room={detailsRoom}
+          isOpen={!!detailsRoom}
+          onClose={() => setDetailsRoom(null)}
+          onStatusChange={handleStatusChange}
+          onHousekeepingChange={handleHousekeepingChange}
+          onDeleteRoom={handleDeleteRoom}
         />
       </div>
     </PermissionGuard>
