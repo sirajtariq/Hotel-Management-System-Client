@@ -28,10 +28,10 @@ export function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: 'admin',
-      password: 'Admin!@#',
-    },
+    // defaultValues: {
+    //   email: 'admin',
+    //   password: 'Admin!@#',
+    // },
   });
 
   const onSubmit = async (data: LoginSchema) => {
@@ -74,9 +74,9 @@ export function LoginForm() {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-semibold text-slate-700">Password</label>
-          <a href="#forgot" className="text-[11px] text-slate-500 hover:text-slate-900 font-medium">
+          {/* <a href="#forgot" className="text-[11px] text-slate-500 hover:text-slate-900 font-medium">
             Forgot password?
-          </a>
+          </a> */}
         </div>
         <div className="relative">
           <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
