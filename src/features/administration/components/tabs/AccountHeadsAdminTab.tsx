@@ -87,15 +87,15 @@ export function AccountHeadsAdminTab() {
 
   const handleToggleActive = async (id: number, currentStatus: boolean, headName: string) => {
     try {
-      await expenseService.toggleAccountHeadActive(id);
+      const updated = await expenseService.toggleAccountHeadActive(id);
       setHeads((prev) =>
-        prev.map((h) => (h.id === id ? { ...h, is_active: !currentStatus } : h))
+        prev.map((h) => (h.id === id ? updated : h))
       );
       queryClient.invalidateQueries({ queryKey: ['accountHeads'] });
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       toast.success(
-        !currentStatus ? 'Category Activated' : 'Category Inactivated',
-        `"${headName}" status changed to ${!currentStatus ? 'Active' : 'Inactive'}.`
+        updated.is_active ? 'Category Activated' : 'Category Inactivated',
+        `"${headName}" status changed to ${updated.is_active ? 'Active' : 'Inactive'}.`
       );
     } catch {
       toast.error('Update Failed', 'Could not toggle Account Head status.');

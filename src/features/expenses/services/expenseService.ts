@@ -26,14 +26,35 @@ function normalizeExpense(e: any): Expense {
   };
 }
 
+function normalizeAccountHead(h: any): AccountHead {
+  if (!h) {
+    return { id: 0, name: '', is_active: false };
+  }
+  const isActiveBool = typeof h.is_active !== 'undefined'
+    ? Boolean(h.is_active)
+    : (typeof h.isActive !== 'undefined' ? Boolean(h.isActive) : true);
+
+  return {
+    id: Number(h.id),
+    tenant: h.tenant,
+    name: h.name || '',
+    description: h.description || '',
+    is_active: isActiveBool,
+    created_at: h.created_at || h.createdAt,
+    expenses_count: Number(h.expenses_count ?? h.expensesCount ?? 0),
+    total_spent_amount: h.total_spent_amount ?? h.totalSpentAmount ?? 0,
+  };
+}
+
 export const expenseService = {
   // --- Account Heads ---
-  async getAccountHeads(params?: { search?: string }): Promise<AccountHead[]> {
+  async getAccountHeads(params?: { search?: string; is_active?: boolean }): Promise<AccountHead[]> {
     try {
       const response = await apiClient.get('/expenses/account-heads/', { params });
-      if (Array.isArray(response.data)) return response.data;
-      if (response.data?.results && Array.isArray(response.data.results)) return response.data.results;
-      return [];
+      const rawList = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.results && Array.isArray(response.data.results) ? response.data.results : []);
+      return rawList.map(normalizeAccountHead);
     } catch {
       return [];
     }
@@ -42,7 +63,7 @@ export const expenseService = {
   async createAccountHead(input: CreateAccountHeadInput): Promise<AccountHead> {
     try {
       const response = await apiClient.post<AccountHead>('/expenses/account-heads/', input);
-      return response.data;
+      return normalizeAccountHead(response.data);
     } catch (err: any) {
       if (err.response?.data) {
         const msg = typeof err.response.data === 'object'
@@ -57,7 +78,7 @@ export const expenseService = {
   async toggleAccountHeadActive(id: number): Promise<AccountHead> {
     try {
       const response = await apiClient.post<AccountHead>(`/expenses/account-heads/${id}/toggle-active/`);
-      return response.data;
+      return normalizeAccountHead(response.data);
     } catch (err: any) {
       console.error('Failed to toggle Account Head active status:', err);
       throw err;
@@ -67,7 +88,7 @@ export const expenseService = {
   async updateAccountHead(id: number, input: Partial<CreateAccountHeadInput>): Promise<AccountHead> {
     try {
       const response = await apiClient.patch<AccountHead>(`/expenses/account-heads/${id}/`, input);
-      return response.data;
+      return normalizeAccountHead(response.data);
     } catch (err: any) {
       if (err.response?.data) {
         const msg = typeof err.response.data === 'object'
