@@ -12,11 +12,13 @@ import { TableSelectorModal } from '../components/pos/TableSelectorModal';
 import { RoomServicePicker, CheckedInBooking } from '../components/pos/RoomServicePicker';
 import { POSBillingModal } from '../components/pos/POSBillingModal';
 import { KitchenReceiptPrint } from '../components/print/KitchenReceiptPrint';
+import { ActiveOrdersTab } from '../components/ActiveOrdersTab';
 import { MenuItem, MenuItemVariation, DiningTable, ReceiptData, restaurantService } from '../services/restaurantService';
-import { Search, UtensilsCrossed, Trash2, ShieldCheck, X } from 'lucide-react';
+import { Search, UtensilsCrossed, Trash2, ShieldCheck, X, Receipt, ShoppingBag } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 
 export function RestaurantPOSPage() {
+  const [activePosTab, setActivePosTab] = useState<'CATALOG' | 'ORDERS'>('CATALOG');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const { categories, menuItems, loading: menuLoading, searchQuery, setSearchQuery } = useRestaurantMenu(selectedCategoryId || undefined);
   const { tables } = useDiningTables();
@@ -49,7 +51,8 @@ export function RestaurantPOSPage() {
   // Filtered menu items
   const filteredItems = useMemo(() => {
     return menuItems.filter((item) => {
-      const matchesCategory = selectedCategoryId ? item.category === selectedCategoryId : true;
+      const itemCatId = typeof item.category === 'object' ? (item.category as any)?.id : item.category;
+      const matchesCategory = selectedCategoryId ? itemCatId === selectedCategoryId : true;
       const matchesSearch = searchQuery
         ? item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -67,7 +70,11 @@ export function RestaurantPOSPage() {
   };
 
   const addToCart = (item: MenuItem, variation: MenuItemVariation | null, instructions: string) => {
-    const unitPrice = variation ? Number(variation.price) : Number(item.base_price);
+    const rawPrice = variation
+      ? (variation.price ?? (variation as any).base_price ?? (variation as any).basePrice ?? 0)
+      : (item.basePrice ?? item.base_price ?? item.price ?? 0);
+    const parsed = Number(rawPrice);
+    const unitPrice = isNaN(parsed) ? 0 : parsed;
     const cartId = `${item.id}-${variation?.id || 'base'}-${instructions}`;
 
     setCartItems((prev) => {
@@ -194,7 +201,7 @@ export function RestaurantPOSPage() {
       {/* Main Catalog & Ordering Screen (Left 65% - 70%) */}
       <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
         {/* Sleek Top Action Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-200/80 shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-200/80 shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
               <UtensilsCrossed className="h-5 w-5" />
@@ -208,75 +215,116 @@ export function RestaurantPOSPage() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-normal mt-0.5">
-                High-speed cashier terminal for quick food selection, table assignment, and KOT dispatch
+                High-speed cashier terminal for quick food selection, table assignment, and order billing
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {/* Search Input */}
-            <div className="relative flex-1 sm:w-72">
-              <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search food item by name or code..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/90 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all shadow-2xs"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Quick Clear Cart Trigger */}
-            {cartItems.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Tab Switcher */}
+            <div className="bg-slate-200/80 p-1 rounded-xl flex items-center gap-1 border border-slate-300/60">
               <button
                 type="button"
-                onClick={handleClearCart}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-all shadow-2xs shrink-0"
-                title="Clear Cart"
+                onClick={() => setActivePosTab('CATALOG')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activePosTab === 'CATALOG'
+                    ? 'bg-indigo-900 text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200'
+                }`}
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Reset Cart ({totalCartQuantity})</span>
+                <ShoppingBag className="h-3.5 w-3.5" />
+                <span>POS Catalog</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => setActivePosTab('ORDERS')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activePosTab === 'ORDERS'
+                    ? 'bg-indigo-900 text-white shadow-xs'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200'
+                }`}
+              >
+                <Receipt className="h-3.5 w-3.5" />
+                <span>Orders / Running Bills</span>
+              </button>
+            </div>
+
+            {activePosTab === 'CATALOG' && (
+              <>
+                {/* Search Input */}
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search food item..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-slate-200/90 bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all shadow-2xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Clear Cart Trigger */}
+                {cartItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearCart}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-all shadow-2xs shrink-0"
+                    title="Clear Cart"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Reset ({totalCartQuantity})</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Category Scroll Pills */}
-        <div className="mb-4 shrink-0">
-          <CategoryPills
-            categories={categories}
-            selectedCategoryId={selectedCategoryId}
-            onSelectCategory={setSelectedCategoryId}
-          />
-        </div>
+        {activePosTab === 'ORDERS' ? (
+          <div className="flex-1 overflow-y-auto pr-1">
+            <ActiveOrdersTab />
+          </div>
+        ) : (
+          <>
+            {/* Category Scroll Pills */}
+            <div className="mb-4 shrink-0">
+              <CategoryPills
+                categories={categories}
+                selectedCategoryId={selectedCategoryId}
+                onSelectCategory={setSelectedCategoryId}
+              />
+            </div>
 
-        {/* Food Menu Cards Matrix */}
-        <div className="flex-1 overflow-y-auto pr-1">
-          {menuLoading ? (
-            <POSCatalogSkeleton />
-          ) : filteredItems.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
-              <UtensilsCrossed className="h-10 w-10 text-slate-300 mb-2" />
-              <p className="text-sm font-semibold text-slate-700">No Food Items Found</p>
-              <p className="text-xs text-slate-400 mt-1">Try selecting a different category or refining your search term.</p>
+            {/* Food Menu Cards Matrix */}
+            <div className="flex-1 overflow-y-auto pr-1">
+              {menuLoading ? (
+                <POSCatalogSkeleton />
+              ) : filteredItems.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-slate-400 bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
+                  <UtensilsCrossed className="h-10 w-10 text-slate-300 mb-2" />
+                  <p className="text-sm font-semibold text-slate-700">No Food Items Found</p>
+                  <p className="text-xs text-slate-400 mt-1">Try selecting a different category or refining your search term.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredItems.map((item) => (
+                    <MenuItemCard key={item.id} item={item} onSelect={handleSelectItem} />
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5">
-              {filteredItems.map((item) => (
-                <MenuItemCard key={item.id} item={item} onSelect={handleSelectItem} />
-              ))}
-            </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Order Cart Sidebar (Right 30% - 35%) */}
@@ -286,6 +334,10 @@ export function RestaurantPOSPage() {
           orderType={orderType}
           selectedTable={selectedTable}
           selectedBooking={selectedBooking}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          onCustomerNameChange={setCustomerName}
+          onCustomerPhoneChange={setCustomerPhone}
           discountType={discountType}
           discountValue={discountValue}
           taxPercentage={taxPercentage}

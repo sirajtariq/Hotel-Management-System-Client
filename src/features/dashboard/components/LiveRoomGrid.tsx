@@ -3,13 +3,14 @@ import { Room, RoomStatus, HousekeepingStatus } from '@/types/rooms';
 import { roomService } from '@/features/rooms/services/roomService';
 import { RoomGridCard } from './RoomGridCard';
 import { RoomDetailsModal } from '@/features/rooms/components/RoomDetailsModal';
-import { Search, Plus, RefreshCw, Filter, Layers } from 'lucide-react';
+import { Search, Plus, RefreshCw, Filter, Layers, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Can } from '@/lib/rbac';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from '@/components/ui/ToastProvider';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface LiveRoomGridProps {
   activePropertyId?: string;
@@ -19,22 +20,26 @@ interface LiveRoomGridProps {
 export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveRoomGridProps) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [floorFilter, setFloorFilter] = useState<string>('ALL');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const fetchRooms = async () => {
-    setIsLoading(true);
+  const fetchRooms = async (forceRefresh = false) => {
+    if (forceRefresh) setIsRefreshing(true);
+    else setIsLoading(true);
     try {
-      const data = await roomService.getRooms(activePropertyId);
+      const data = await roomService.getRooms(activePropertyId, forceRefresh);
       setRooms(data);
     } catch {
       // Fallback handled in service
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -49,6 +54,8 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
       if (selectedRoom?.id === roomId) {
         setSelectedRoom(updated);
       }
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
       toast.success('Room Status Updated', `Room ${updated.roomNumber || roomId} status is now ${newStatus}`);
     } catch {
       toast.error('Update Failed', 'Could not change room status.');
@@ -62,26 +69,35 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
       if (selectedRoom?.id === roomId) {
         setSelectedRoom(updated);
       }
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
       toast.success('Housekeeping Updated', `Room ${updated.roomNumber || roomId} is now ${newHkStatus}`);
     } catch {
       toast.error('Update Failed', 'Could not change housekeeping status.');
     }
   };
 
-  // Extract distinct floors dynamically
-  const distinctFloors = useMemo(() => {
+  // Extract distinct floors dynamically & count rooms per floor
+  const { distinctFloors, floorCounts } = useMemo(() => {
     const floorsSet = new Set<string>();
+    const counts: Record<string, number> = {};
+
     rooms.forEach((r) => {
       if (r.floor !== undefined && r.floor !== null) {
-        floorsSet.add(String(r.floor));
+        const fl = String(r.floor);
+        floorsSet.add(fl);
+        counts[fl] = (counts[fl] || 0) + 1;
       }
     });
-    return Array.from(floorsSet).sort((a, b) => {
+
+    const sortedFloors = Array.from(floorsSet).sort((a, b) => {
       const numA = parseInt(a, 10);
       const numB = parseInt(b, 10);
       if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
       return a.localeCompare(b);
     });
+
+    return { distinctFloors: sortedFloors, floorCounts: counts };
   }, [rooms]);
 
   // Calculate live count statistics
@@ -90,15 +106,32 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
     let occupied = 0;
     let reserved = 0;
     let cleaning = 0;
+    let dirty = 0;
     let maintenance = 0;
 
     rooms.forEach((r) => {
       const st = String(r.status || '').toUpperCase();
-      if (st === 'AVAILABLE') available++;
-      else if (st === 'OCCUPIED') occupied++;
-      else if (st === 'RESERVED') reserved++;
-      else if (st === 'CLEANING') cleaning++;
-      else if (st === 'MAINTENANCE') maintenance++;
+      const hk = String(r.housekeeping_status || '').toUpperCase();
+
+      const isClean = hk === 'CLEAN' || hk === 'INSPECTED' || hk === '';
+      const isDirty = hk === 'DIRTY' || hk === 'DIRTY_ROOM';
+      const isCleaning = st === 'CLEANING' || hk === 'IN_PROGRESS' || hk === 'CLEANING';
+
+      if (st === 'OCCUPIED') {
+        occupied++;
+      } else if (st === 'RESERVED') {
+        reserved++;
+      } else if (st === 'MAINTENANCE') {
+        maintenance++;
+      } else if (isCleaning) {
+        cleaning++;
+      } else if (isDirty) {
+        dirty++;
+      } else if (st === 'AVAILABLE' && isClean) {
+        available++;
+      } else if (st === 'AVAILABLE') {
+        available++;
+      }
     });
 
     return {
@@ -107,6 +140,7 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
       occupied,
       reserved,
       cleaning,
+      dirty,
       maintenance,
     };
   }, [rooms]);
@@ -115,12 +149,28 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
   const filteredRooms = useMemo(() => {
     return rooms.filter((room) => {
       const roomStatus = String(room.status || '').toUpperCase();
-      if (statusFilter !== 'ALL' && roomStatus !== statusFilter) {
-        return false;
+      const hkStatus = String(room.housekeeping_status || '').toUpperCase();
+
+      const isClean = hkStatus === 'CLEAN' || hkStatus === 'INSPECTED' || hkStatus === '';
+      const isDirty = hkStatus === 'DIRTY' || hkStatus === 'DIRTY_ROOM';
+      const isCleaning = roomStatus === 'CLEANING' || hkStatus === 'IN_PROGRESS' || hkStatus === 'CLEANING';
+
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'AVAILABLE') {
+          if (roomStatus !== 'AVAILABLE' || !isClean) return false;
+        } else if (statusFilter === 'DIRTY') {
+          if (!isDirty) return false;
+        } else if (statusFilter === 'CLEANING') {
+          if (!isCleaning) return false;
+        } else if (roomStatus !== statusFilter) {
+          return false;
+        }
       }
+
       if (floorFilter !== 'ALL' && String(room.floor) !== floorFilter) {
         return false;
       }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesRoom = String(room.roomNumber).toLowerCase().includes(q);
@@ -174,11 +224,11 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
           <Button
             variant="ghost"
             size="icon"
-            onClick={fetchRooms}
+            onClick={() => fetchRooms(true)}
             title="Refresh Grid"
             className="h-8 w-8 text-slate-500 hover:text-slate-900 cursor-pointer"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin text-indigo-600')} />
           </Button>
 
           <Can permission="rooms:manage">
@@ -222,7 +272,7 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
             )}
           >
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Available ({stats.available})
+            Available & Ready ({stats.available})
           </button>
 
           <button
@@ -265,6 +315,20 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
           >
             <span className="h-2 w-2 rounded-full bg-purple-500" />
             Cleaning ({stats.cleaning})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('DIRTY')}
+            className={cn(
+              'px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer',
+              statusFilter === 'DIRTY'
+                ? 'bg-amber-600 text-white font-semibold shadow-2xs'
+                : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+            )}
+          >
+            <AlertTriangle className="h-3 w-3 text-amber-600" />
+            Dirty ({stats.dirty})
           </button>
 
           <button
@@ -314,19 +378,19 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
                   : 'text-slate-600 hover:text-slate-900'
               )}
             >
-              Fl {fl}
+              Fl {fl} ({floorCounts[fl] || 0})
             </button>
           ))}
         </div>
       </div>
 
-      {/* Room Grid Matrix */}
+      {/* Room Grid Matrix - Grid Cols 1 -> 2 -> 3 -> 4 -> 5 */}
       {isLoading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {Array.from({ length: 12 }).map((_, idx) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {Array.from({ length: 10 }).map((_, idx) => (
             <div
               key={idx}
-              className="rounded-xl border border-slate-200/80 p-3 flex flex-col justify-between bg-white shadow-2xs min-h-[110px]"
+              className="rounded-2xl border border-slate-200/80 p-3.5 flex flex-col justify-between bg-white shadow-2xs min-h-[120px]"
             >
               <div>
                 <div className="flex items-center justify-between gap-1.5">
@@ -366,7 +430,7 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filteredRooms.map((room) => (
             <RoomGridCard key={room.id} room={room} onSelectRoom={handleRoomClick} />
           ))}
@@ -384,3 +448,4 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
     </div>
   );
 }
+

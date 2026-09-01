@@ -1,8 +1,0 @@
-{
-  "name": "Hotel Management System",
-  "description": "A modern, professional, web-based Hotel Management System ERP for front office, reservations, rooms, housekeeping, expense & purchase tracking (kharcha & roznamcha), restaurant, inventory, employees, and reports.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

@@ -58,8 +58,8 @@ export function RestaurantAdminTab() {
       </div>
 
       {/* Sub-Tab Active Body */}
-      {activeSubTab === 'menu' && <MenuCatalogPage />}
-      {activeSubTab === 'tables' && <TableManagementPage />}
+      {activeSubTab === 'menu' && <MenuCatalogPage hideHeader={true} />}
+      {activeSubTab === 'tables' && <TableManagementPage hideHeader={true} />}
     </div>
   );
 }

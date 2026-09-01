@@ -60,38 +60,51 @@ export function InvoicePrintModal({ booking, isOpen, onClose }: InvoicePrintModa
           </div>
 
           {/* Line items */}
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2">Description</th>
-                <th className="py-2 text-right">Amount (PKR)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              <tr>
-                <td className="py-2 font-medium text-slate-800">Room Accommodation ({booking.totalNights} Nights)</td>
-                <td className="py-2 text-right font-mono tabular-nums">{formatPKR(booking.totalAmount * 0.85)}</td>
-              </tr>
-              <tr>
-                <td className="py-2 font-medium text-slate-800">GST / Luxury Tax (15%)</td>
-                <td className="py-2 text-right font-mono tabular-nums">{formatPKR(booking.totalAmount * 0.15)}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-slate-200 font-bold text-slate-900">
-                <td className="py-2 pt-3">Total Payable</td>
-                <td className="py-2 pt-3 text-right font-mono tabular-nums text-sm">{formatPKR(booking.totalAmount)}</td>
-              </tr>
-              <tr className="text-emerald-700 font-semibold">
-                <td className="py-1">Amount Paid</td>
-                <td className="py-1 text-right font-mono tabular-nums">{formatPKR(booking.paidAmount)}</td>
-              </tr>
-              <tr className="text-rose-600 font-bold">
-                <td className="py-1">Balance Remaining</td>
-                <td className="py-1 text-right font-mono tabular-nums">{formatPKR(booking.remainingAmount)}</td>
-              </tr>
-            </tfoot>
-          </table>
+          {(() => {
+            const restaurantOrders = booking.restaurant_orders || booking.restaurantOrders || [];
+            const totalRestaurantCharges = Number(booking.total_restaurant_charges || booking.totalRestaurantCharges) || 
+              restaurantOrders.reduce((sum: number, o: any) => sum + (Number(o.grand_total || o.grandTotal) || 0), 0);
+            const roomStayCharges = Math.max(0, booking.totalAmount - totalRestaurantCharges);
+
+            return (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="py-2">Description</th>
+                    <th className="py-2 text-right">Amount (PKR)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="py-2 font-medium text-slate-800">Room Accommodation ({booking.totalNights} Nights)</td>
+                    <td className="py-2 text-right font-mono tabular-nums">{formatPKR(roomStayCharges)}</td>
+                  </tr>
+                  {restaurantOrders.map((ord: any) => (
+                    <tr key={ord.id}>
+                      <td className="py-2 font-medium text-indigo-900">
+                        Restaurant Order #{ord.order_number || ord.orderNumber} ({ord.order_type || ord.orderType})
+                      </td>
+                      <td className="py-2 text-right font-mono tabular-nums">{formatPKR(ord.grand_total || ord.grandTotal || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 font-bold text-slate-900">
+                    <td className="py-2 pt-3">Total Payable</td>
+                    <td className="py-2 pt-3 text-right font-mono tabular-nums text-sm">{formatPKR(booking.totalAmount)}</td>
+                  </tr>
+                  <tr className="text-emerald-700 font-semibold">
+                    <td className="py-1">Amount Paid</td>
+                    <td className="py-1 text-right font-mono tabular-nums">{formatPKR(booking.paidAmount)}</td>
+                  </tr>
+                  <tr className="text-rose-600 font-bold">
+                    <td className="py-1">Balance Remaining</td>
+                    <td className="py-1 text-right font-mono tabular-nums">{formatPKR(booking.remainingAmount)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            );
+          })()}
 
           <div className="pt-4 border-t border-slate-100 text-center text-[10px] text-slate-400">
             Thank you for staying with Apex Hotel & Suites. Computer generated invoice.

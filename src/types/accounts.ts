@@ -6,15 +6,26 @@ export interface PaymentAccount {
   id: number;
   name: string;
   account_type: AccountType;
+  accountType?: AccountType;
   bank_name?: string;
+  bankName?: string;
   account_number?: string;
+  accountNumber?: string;
   iban?: string;
   branch_name?: string;
+  branchName?: string;
   opening_balance: number;
+  openingBalance?: number;
   current_balance: number;
+  currentBalance?: number;
   is_default: boolean;
+  isDefault?: boolean;
   is_active: boolean;
+  isActive?: boolean;
+  transactions_count?: number;
+  transactionsCount?: number;
   created_at?: string;
+  createdAt?: string;
 }
 
 export interface AccountTransaction {

@@ -44,15 +44,34 @@ export function useRestaurantMenu(categoryId?: number, page: number = 1, pageSiz
     fetchMenuItems();
   }, [fetchMenuItems]);
 
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+
   const toggleAvailability = async (id: number) => {
+    if (togglingId === id) return;
+    setTogglingId(id);
     try {
       const res = await restaurantService.toggleItemAvailability(id);
+      const nextVal = typeof res.is_available === 'boolean' ? res.is_available : typeof res.isAvailable === 'boolean' ? res.isAvailable : false;
       setMenuItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, is_available: res.is_available } : item))
+        prev.map((item) => {
+          if (item.id === id) {
+            return {
+              ...item,
+              ...res,
+              is_available: nextVal,
+              isAvailable: nextVal,
+              is_active: nextVal,
+              isActive: nextVal,
+            };
+          }
+          return item;
+        })
       );
-      toast.success(`${res.name} availability toggled.`);
+      toast.success(`${res.name || 'Food item'} status changed to ${nextVal ? 'Available' : 'Unavailable'}.`);
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to update item status.');
+      toast.error(err.response?.data?.detail || err.message || 'Failed to update item status.');
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -61,6 +80,7 @@ export function useRestaurantMenu(categoryId?: number, page: number = 1, pageSiz
     menuItems,
     totalCount,
     loading,
+    togglingId,
     searchQuery,
     setSearchQuery,
     fetchCategories,

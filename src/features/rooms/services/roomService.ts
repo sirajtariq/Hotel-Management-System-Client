@@ -282,6 +282,7 @@ export const roomService = {
 
   async updateRoomStatus(roomId: string, status: RoomStatus): Promise<Room> {
     try {
+      roomsCache = null;
       const response = await apiClient.patch<Room>(`/rooms/${roomId}/`, { status });
       return normalizeRoom(response.data);
     } catch (err: any) {
@@ -297,6 +298,7 @@ export const roomService = {
 
   async updateHousekeepingStatus(roomId: string, hkStatus: HousekeepingStatus): Promise<Room> {
     try {
+      roomsCache = null;
       const response = await apiClient.patch<Room>(`/rooms/${roomId}/`, { housekeeping_status: hkStatus });
       return normalizeRoom(response.data);
     } catch (err: any) {
@@ -312,6 +314,7 @@ export const roomService = {
 
   async createRoom(input: CreateRoomInput): Promise<Room> {
     try {
+      roomsCache = null;
       const response = await apiClient.post<Room>('/rooms/', input);
       return normalizeRoom(response.data);
     } catch (err: any) {
@@ -326,6 +329,7 @@ export const roomService = {
   },
 
   async deleteRoom(id: string | number): Promise<void> {
+    roomsCache = null;
     await apiClient.delete(`/rooms/${id}/`);
   },
 

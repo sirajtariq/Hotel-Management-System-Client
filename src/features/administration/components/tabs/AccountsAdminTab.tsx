@@ -5,9 +5,11 @@ import { AccountCard } from '@/features/accounts/components/AccountCard';
 import { AddEditAccountModal } from '@/features/accounts/components/AddEditAccountModal';
 import { TransferFundsModal } from '@/features/accounts/components/TransferFundsModal';
 import { AccountLedgerModal } from '@/features/accounts/components/AccountLedgerModal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { formatPKR } from '@/lib/formatters';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from '@/components/ui/ToastProvider';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   CreditCard,
   Wallet,
@@ -19,12 +21,15 @@ import {
 } from 'lucide-react';
 
 export function AccountsAdminTab() {
+  const queryClient = useQueryClient();
   const [accounts, setAccounts] = useState<PaymentAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<PaymentAccount | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState<PaymentAccount | null>(null);
+  const [togglingAccountId, setTogglingAccountId] = useState<number | null>(null);
 
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
@@ -58,8 +63,12 @@ export function AccountsAdminTab() {
         setAccounts((prev) => [created, ...prev]);
         toast.success('Account Created', `Added "${created.name}" to payment accounts`);
       }
-    } catch {
-      toast.error('Save Failed', 'Could not save payment account.');
+      queryClient.invalidateQueries({ queryKey: ['paymentAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error('Save Failed', err.message || 'Could not save payment account.');
     }
   };
 
@@ -72,9 +81,48 @@ export function AccountsAdminTab() {
           is_default: a.id === id,
         }))
       );
+      queryClient.invalidateQueries({ queryKey: ['paymentAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
       toast.success('Default Account Updated', `"${name}" is now the default payment account.`);
     } catch {
       toast.error('Update Failed', 'Could not set default account.');
+    }
+  };
+
+  const handleToggleActive = async (account: PaymentAccount) => {
+    if (togglingAccountId === account.id) return;
+    setTogglingAccountId(account.id);
+    const currentStatus = typeof account.is_active === 'boolean' ? account.is_active : typeof account.isActive === 'boolean' ? account.isActive : true;
+    try {
+      const updated = await accountService.toggleAccountActive(account.id, currentStatus);
+      setAccounts((prev) => prev.map((a) => (a.id === account.id ? updated : a)));
+      queryClient.invalidateQueries({ queryKey: ['paymentAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
+      toast.success(
+        !currentStatus ? 'Account Activated' : 'Account Inactivated',
+        `"${account.name}" status changed to ${!currentStatus ? 'Active' : 'Inactive'}.`
+      );
+    } catch (err: any) {
+      toast.error('Update Failed', err.message || 'Could not toggle account status.');
+    } finally {
+      setTogglingAccountId(null);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingAccount) return;
+    try {
+      await accountService.deletePaymentAccount(deletingAccount.id);
+      toast.success('Account Deleted', `Deleted "${deletingAccount.name}".`);
+      queryClient.invalidateQueries({ queryKey: ['paymentAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
+      setDeletingAccount(null);
+      fetchAccounts();
+    } catch (err: any) {
+      toast.error('Delete Failed', err.message || 'Could not delete payment account.');
     }
   };
 
@@ -82,30 +130,38 @@ export function AccountsAdminTab() {
     try {
       await accountService.executeTransfer(input);
       toast.success('Transfer Executed', 'Internal fund transfer completed successfully.');
+      queryClient.invalidateQueries({ queryKey: ['paymentAccounts'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
       fetchAccounts();
     } catch (err: any) {
       toast.error('Transfer Failed', err.message || 'Could not complete transfer.');
     }
   };
 
+  // Helper for normalization
+  const isAccountActive = (a: PaymentAccount) => a.isActive ?? a.is_active ?? true;
+  const getAccountType = (a: PaymentAccount) => (a.accountType ?? a.account_type ?? 'CASH').toUpperCase();
+  const getAccountBalance = (a: PaymentAccount) => parseFloat(String(a.currentBalance ?? a.current_balance ?? 0));
+
   // Metrics calculations
-  const activeAccountsCount = accounts.filter((a) => a.is_active).length;
+  const activeAccountsCount = accounts.filter(isAccountActive).length;
 
   const totalLiquidity = accounts
-    .filter((a) => a.is_active)
-    .reduce((acc, item) => acc + (parseFloat(String(item.current_balance)) || 0), 0);
+    .filter(isAccountActive)
+    .reduce((acc, item) => acc + getAccountBalance(item), 0);
 
   const cashTotal = accounts
-    .filter((a) => a.is_active && a.account_type === 'CASH')
-    .reduce((acc, item) => acc + (parseFloat(String(item.current_balance)) || 0), 0);
+    .filter((a) => isAccountActive(a) && getAccountType(a) === 'CASH')
+    .reduce((acc, item) => acc + getAccountBalance(item), 0);
 
   const bankTotal = accounts
-    .filter((a) => a.is_active && a.account_type === 'BANK')
-    .reduce((acc, item) => acc + (parseFloat(String(item.current_balance)) || 0), 0);
+    .filter((a) => isAccountActive(a) && getAccountType(a) === 'BANK')
+    .reduce((acc, item) => acc + getAccountBalance(item), 0);
 
   const walletTotal = accounts
-    .filter((a) => a.is_active && a.account_type === 'WALLET')
-    .reduce((acc, item) => acc + (parseFloat(String(item.current_balance)) || 0), 0);
+    .filter((a) => isAccountActive(a) && getAccountType(a) === 'WALLET')
+    .reduce((acc, item) => acc + getAccountBalance(item), 0);
 
   return (
     <div className="space-y-6 font-sans">
@@ -157,7 +213,7 @@ export function AccountsAdminTab() {
               {formatPKR(totalLiquidity)}
             </div>
             <span className="text-[11px] text-slate-400 font-medium mt-0.5 block">
-              Across {activeAccountsCount} active accounts
+              Across {activeAccountsCount} active {activeAccountsCount === 1 ? 'account' : 'accounts'}
             </span>
           </div>
           <div className="bg-indigo-50 text-indigo-600 border border-indigo-100 p-2.5 rounded-xl shrink-0">
@@ -245,6 +301,7 @@ export function AccountsAdminTab() {
             <AccountCard
               key={acc.id}
               account={acc}
+              isToggling={togglingAccountId === acc.id}
               onViewLedger={(a) => {
                 setLedgerAccount(a);
                 setIsLedgerModalOpen(true);
@@ -254,6 +311,8 @@ export function AccountsAdminTab() {
                 setIsAddEditModalOpen(true);
               }}
               onSetDefault={handleSetDefault}
+              onToggleActive={handleToggleActive}
+              onDelete={(a) => setDeletingAccount(a)}
             />
           ))}
         </div>
@@ -281,6 +340,18 @@ export function AccountsAdminTab() {
         isOpen={isLedgerModalOpen}
         onClose={() => setIsLedgerModalOpen(false)}
       />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deletingAccount}
+        onClose={() => setDeletingAccount(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Payment Account"
+        description={`Are you sure you want to delete "${deletingAccount?.name}"? This action cannot be undone.`}
+        confirmText="Delete Account"
+        variant="danger"
+      />
     </div>
   );
 }
+

@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useRestaurantMenu } from '../hooks/useRestaurantMenu';
 import { restaurantService, MenuItem } from '../services/restaurantService';
-import { BookOpen, Plus, Search, Layers, ToggleLeft, ToggleRight, Trash2, Edit, X } from 'lucide-react';
+import { BookOpen, Plus, Search, Layers, ToggleLeft, ToggleRight, Trash2, Edit, X, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 import { TablePagination } from '@/components/ui/TablePagination';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
-export function MenuCatalogPage() {
+interface MenuCatalogPageProps {
+  hideHeader?: boolean;
+}
+
+export function MenuCatalogPage({ hideHeader = false }: MenuCatalogPageProps) {
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
 
-  const { categories, menuItems, totalCount, loading, searchQuery, setSearchQuery, fetchCategories, fetchMenuItems, toggleAvailability } =
+  const { categories, menuItems, totalCount, loading, togglingId, searchQuery, setSearchQuery, fetchCategories, fetchMenuItems, toggleAvailability } =
     useRestaurantMenu(selectedCatId || undefined, currentPage, pageSize);
 
   useEffect(() => {
@@ -44,9 +48,9 @@ export function MenuCatalogPage() {
   const handleOpenEditItem = (item: MenuItem) => {
     setEditingItem(item);
     setItemName(item.name);
-    setItemCatId(item.category);
+    setItemCatId(typeof item.category === 'object' ? item.category?.id || 0 : item.category);
     setItemDesc(item.description || '');
-    setItemBasePrice(Number(item.base_price));
+    setItemBasePrice(Number(item.basePrice ?? item.base_price ?? item.price ?? 0));
     setItemVariations(
       item.variations?.map((v) => ({ name: v.name, price: Number(v.price) })) || []
     );
@@ -125,49 +129,51 @@ export function MenuCatalogPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-indigo-900 text-white flex items-center justify-center font-bold">
-            <BookOpen className="h-5 w-5" />
+    <div className="space-y-5 font-sans">
+      {/* Top Header (Rendered only when hideHeader is false) */}
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-indigo-900 text-white flex items-center justify-center font-bold">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">Food Menu & Variations Manager</h1>
+              <p className="text-xs text-slate-500 font-normal">
+                Configure food items, dynamic portion sizes, base prices, and live availability
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900">Food Menu & Variations Manager</h1>
-            <p className="text-xs text-slate-500 font-normal">
-              Configure food items, dynamic portion sizes, base prices, and live availability
-            </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsCatModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Add Category
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenCreateItem}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              Add Food Item
+            </button>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsCatModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 shadow-xs transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Add Category
-          </button>
-          <button
-            type="button"
-            onClick={handleOpenCreateItem}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white text-xs font-semibold shadow-xs transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            Add Food Item
-          </button>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1">
+      {/* Filter, Search & Action Bar */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
           <button
             type="button"
             onClick={() => setSelectedCatId(null)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              selectedCatId === null ? 'bg-indigo-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              selectedCatId === null ? 'bg-indigo-900 text-white shadow-2xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
             }`}
           >
             All Categories
@@ -177,8 +183,8 @@ export function MenuCatalogPage() {
               key={c.id}
               type="button"
               onClick={() => setSelectedCatId(c.id)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                selectedCatId === c.id ? 'bg-indigo-900 text-white' : 'bg-white text-slate-700 border border-slate-200'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                selectedCatId === c.id ? 'bg-indigo-900 text-white shadow-2xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80'
               }`}
             >
               {c.name}
@@ -186,23 +192,46 @@ export function MenuCatalogPage() {
           ))}
         </div>
 
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search catalog..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          />
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search food catalog..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200/80 text-xs font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 bg-slate-50/50"
+            />
+          </div>
+
+          {hideHeader && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCatModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Category</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenCreateItem}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>+ Food Item</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Menu Items Table / Grid */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-bold">
               <th className="p-4">Item & Description</th>
               <th className="p-4">Category</th>
               <th className="p-4">Base Price</th>
@@ -212,57 +241,85 @@ export function MenuCatalogPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {menuItems.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                <td className="p-4 font-semibold text-slate-900">
-                  {item.name}
-                  {item.description && <p className="text-[11px] font-normal text-slate-500">{item.description}</p>}
-                </td>
-                <td className="p-4 font-normal text-slate-600">{item.category_name}</td>
-                <td className="p-4 font-bold text-slate-900">PKR {Number(item.base_price).toLocaleString()}</td>
-                <td className="p-4">
-                  {item.variations && item.variations.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {item.variations.map((v) => (
-                        <span key={v.id || v.name} className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-900 font-medium text-[10px]">
-                          {v.name}: PKR {Number(v.price).toLocaleString()}
-                        </span>
-                      ))}
+            {menuItems.map((item) => {
+              const price = Number(item.basePrice ?? item.base_price ?? item.price ?? 0);
+              const formattedPrice = `PKR ${isNaN(price) ? '0' : price.toLocaleString()}`;
+
+              const categoryName = typeof item.category === 'object' && item.category?.name
+                ? item.category.name
+                : item.category_name ?? item.categoryName ?? 'Uncategorized';
+
+              const isAvailable = item.isAvailable ?? item.is_available ?? item.isActive ?? item.is_active ?? true;
+
+              return (
+                <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                  <td className="p-4 font-bold text-slate-900">
+                    {item.name}
+                    {item.description && <p className="text-[11px] font-normal text-slate-500 mt-0.5">{item.description}</p>}
+                  </td>
+                  <td className="p-4 font-medium text-slate-600">{categoryName}</td>
+                  <td className="p-4 font-bold text-slate-900 font-mono text-sm">{formattedPrice}</td>
+                  <td className="p-4">
+                    {item.variations && item.variations.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {item.variations.map((v) => {
+                          const vPrice = Number(v.price ?? 0);
+                          return (
+                            <span key={v.id || v.name} className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-900 font-semibold text-[10px]">
+                              {v.name}: PKR {isNaN(vPrice) ? '0' : vPrice.toLocaleString()}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic">None</span>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <button
+                      type="button"
+                      disabled={togglingId === item.id}
+                      onClick={() => toggleAvailability(item.id)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-bold text-[10px] uppercase transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isAvailable
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                          : 'bg-slate-100 text-slate-600 border border-slate-300 hover:bg-slate-200'
+                      }`}
+                      title={togglingId === item.id ? 'Updating status...' : isAvailable ? 'Mark as Unavailable' : 'Mark as Available'}
+                    >
+                      {togglingId === item.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-600" />
+                      ) : isAvailable ? (
+                        <ToggleRight className="h-4 w-4 text-emerald-600" />
+                      ) : (
+                        <ToggleLeft className="h-4 w-4 text-slate-400" />
+                      )}
+                      <span>{togglingId === item.id ? 'Updating...' : isAvailable ? 'Available' : 'Unavailable'}</span>
+                    </button>
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditItem(item)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-900 hover:bg-indigo-50 transition-colors cursor-pointer"
+                        title="Edit Menu Item"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Delete Menu Item"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  ) : (
-                    <span className="text-slate-400 italic">None</span>
-                  )}
-                </td>
-                <td className="p-4">
-                  <button
-                    type="button"
-                    onClick={() => toggleAvailability(item.id)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[10px] uppercase transition-all ${
-                      item.is_available ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                    }`}
-                  >
-                    {item.is_available ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-                    <span>{item.is_available ? 'Available' : 'Disabled'}</span>
-                  </button>
-                </td>
-                <td className="p-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => handleOpenEditItem(item)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-900 hover:bg-indigo-50"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteItem(item.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 

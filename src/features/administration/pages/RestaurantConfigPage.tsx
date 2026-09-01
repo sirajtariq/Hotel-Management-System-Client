@@ -47,10 +47,10 @@ export function RestaurantConfigPage() {
         </div>
 
         {/* Tab 1 Content: Food Catalog & Items */}
-        {activeTab === 'catalog' && <MenuCatalogPage />}
+        {activeTab === 'catalog' && <MenuCatalogPage hideHeader={true} />}
 
         {/* Tab 2 Content: Dining Tables Layout */}
-        {activeTab === 'tables' && <TableManagementPage />}
+        {activeTab === 'tables' && <TableManagementPage hideHeader={true} />}
       </div>
     </PermissionGuard>
   );

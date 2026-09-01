@@ -55,11 +55,33 @@ export interface Booking {
   taxAmount?: number;
   totalAmount: number;
   paidAmount: number;
+  totalRefunded?: number;
+  total_refunded?: number;
   remainingAmount: number;
   status: BookingStatus;
   paymentStatus: PaymentStatus;
   specialNotes?: string;
+  restaurant_orders?: any[];
+  restaurantOrders?: any[];
+  total_restaurant_charges?: number;
+  totalRestaurantCharges?: number;
   createdAt: string;
+}
+
+export interface BookingRestaurantOrder {
+  id: number;
+  order_number: string;
+  orderNumber?: string;
+  order_type: string;
+  orderType?: string;
+  grand_total: number;
+  grandTotal?: number;
+  items_count?: number;
+  itemsCount?: number;
+  status: string;
+  payment_status: string;
+  paymentStatus?: string;
+  created_at: string;
 }
 
 export interface BookingListItem {
@@ -116,8 +138,10 @@ export interface CreateBookingInput {
 }
 
 export interface RecordPaymentInput {
-  bookingId: string;
+  bookingId: string | number;
   amount: number;
-  paymentMethod?: 'cash' | 'card' | 'bank_transfer';
+  paymentMethod?: 'cash' | 'card' | 'bank_transfer' | string;
+  paymentAccountId?: number;
+  accountId?: number;
   notes?: string;
 }

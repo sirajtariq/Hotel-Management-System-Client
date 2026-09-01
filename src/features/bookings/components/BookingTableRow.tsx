@@ -1,4 +1,4 @@
-import { MoreHorizontal, Printer, DollarSign, LogIn, LogOut, XCircle, Clock, Moon } from 'lucide-react';
+import { MoreHorizontal, Printer, DollarSign, LogIn, LogOut, XCircle, Clock, Moon, Loader2, ArrowUpRight } from 'lucide-react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { BookingStatusBadge } from './BookingStatusBadge';
 import { Button } from '@/components/ui/button';
@@ -18,15 +18,20 @@ interface BookingTableRowProps {
   booking: Booking;
   onStatusChange: (id: string, status: BookingStatus) => void;
   onRecordPayment: (booking: Booking) => void;
+  onProcessRefund?: (booking: Booking) => void;
   onPrintInvoice: (booking: Booking) => void;
+  updatingBookingId?: string | null;
 }
 
 export function BookingTableRow({
   booking,
   onStatusChange,
   onRecordPayment,
+  onProcessRefund,
   onPrintInvoice,
+  updatingBookingId,
 }: BookingTableRowProps) {
+  const isUpdating = updatingBookingId === booking.id;
   const guestName = booking?.guest?.fullName || (booking as any)?.guestName || (booking as any)?.guest_name || 'Guest';
   const guestPhone = booking?.guest?.phone || (booking as any)?.guestPhone || (booking as any)?.guest_phone || 'N/A';
   const bookingRef = booking?.bookingReference || booking?.invoiceNumber || (booking as any)?.invoice_number || `BK-2026-${booking?.id || '000'}`;
@@ -89,21 +94,31 @@ export function BookingTableRow({
             {isCanCheckIn && (
               <Button
                 size="sm"
+                disabled={isUpdating}
                 onClick={() => onStatusChange(booking.id, 'checked_in' as any)}
-                className="h-7 px-2.5 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-lg shadow-2xs cursor-pointer"
+                className="h-7 px-2.5 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 rounded-lg shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <LogIn className="h-3.5 w-3.5" />
-                Check In
+                {isUpdating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <LogIn className="h-3.5 w-3.5" />
+                )}
+                <span>{isUpdating ? 'Checking In...' : 'Check In'}</span>
               </Button>
             )}
             {isCheckedIn && (
               <Button
                 size="sm"
+                disabled={isUpdating}
                 onClick={() => onStatusChange(booking.id, 'checked_out' as any)}
-                className="h-7 px-2.5 text-[11px] font-bold bg-indigo-900 hover:bg-indigo-950 text-white gap-1 rounded-lg shadow-2xs cursor-pointer"
+                className="h-7 px-2.5 text-[11px] font-bold bg-indigo-900 hover:bg-indigo-950 text-white gap-1 rounded-lg shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <LogOut className="h-3.5 w-3.5" />
-                Check Out
+                {isUpdating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <LogOut className="h-3.5 w-3.5" />
+                )}
+                <span>{isUpdating ? 'Checking Out...' : 'Check Out'}</span>
               </Button>
             )}
           </Can>
@@ -140,6 +155,14 @@ export function BookingTableRow({
                   <DropdownMenuItem onClick={() => onRecordPayment(booking)} className="gap-2 text-blue-700 font-semibold cursor-pointer">
                     <DollarSign className="h-3.5 w-3.5" />
                     <span>Record Payment</span>
+                  </DropdownMenuItem>
+                </Can>
+              )}
+              {((booking.paidAmount || (booking as any).paid_amount || 0) - ((booking as any).total_refunded || booking.totalRefunded || 0)) > 0 && (
+                <Can permission="bookings:cancel">
+                  <DropdownMenuItem onClick={() => onProcessRefund?.(booking)} className="gap-2 text-amber-700 font-semibold cursor-pointer">
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                    <span>Process Refund</span>
                   </DropdownMenuItem>
                 </Can>
               )}

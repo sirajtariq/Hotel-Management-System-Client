@@ -169,8 +169,14 @@ export const bookingService = {
 
   async recordPayment(input: RecordPaymentInput): Promise<Booking> {
     try {
+      const accId = input.paymentAccountId || input.accountId;
       const response = await apiClient.post<Booking>(`/bookings/${input.bookingId}/record-payment/`, {
         amount: input.amount,
+        payment_method: input.paymentMethod,
+        paymentAccountId: accId,
+        payment_account_id: accId,
+        accountId: accId,
+        account_id: accId,
       });
       return normalizeBooking(response.data);
     } catch (err: any) {

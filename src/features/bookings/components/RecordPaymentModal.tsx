@@ -39,13 +39,18 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onSubmit({
-      bookingId: booking.id,
-      amount: Number(amount),
-      paymentMethod: method,
-    });
-    setIsSubmitting(false);
-    onClose();
+    try {
+      await onSubmit({
+        bookingId: booking.id,
+        amount: Number(amount),
+        paymentMethod: method,
+        paymentAccountId: selectedAccountId ? Number(selectedAccountId) : undefined,
+        accountId: selectedAccountId ? Number(selectedAccountId) : undefined,
+      });
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -4,6 +4,7 @@ import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { BookingDataTable } from '../components/BookingDataTable';
 import { BookingFormDrawer } from '../components/BookingFormDrawer';
 import { RecordPaymentModal } from '../components/RecordPaymentModal';
+import { ProcessRefundModal } from '../components/ProcessRefundModal';
 import { GuestInvoiceModal } from '../components/GuestInvoiceModal';
 import { TableSkeleton } from '@/components/ui/skeletons/TableSkeleton';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,9 @@ export function BookingsPage() {
   const [statusTab, setStatusTab] = useState<string>('ALL');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
+  const [refundBooking, setRefundBooking] = useState<Booking | null>(null);
   const [invoiceBooking, setInvoiceBooking] = useState<Booking | null>(null);
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
 
   // Reset pagination back to Page 1 on search or status filter change
   useEffect(() => {
@@ -58,13 +61,16 @@ export function BookingsPage() {
   }, [currentPage, pageSize, debouncedSearch, statusTab]);
 
   const handleStatusChange = async (id: string, status: BookingStatus) => {
-    if (isPureSuperAdmin) return;
+    if (isPureSuperAdmin || updatingBookingId === id) return;
+    setUpdatingBookingId(id);
     try {
       const updated = await bookingService.updateBookingStatus(id, status);
       setBookings((prev) => (Array.isArray(prev) ? prev : []).map((b) => (b.id === id ? { ...b, ...updated } : b)));
       toast.success('Reservation Updated', `Booking status changed to ${String(status).toUpperCase().replace('_', ' ')}`);
     } catch (err: any) {
       toast.error('Update Failed', err?.message || 'Could not update booking status.');
+    } finally {
+      setUpdatingBookingId(null);
     }
   };
 
@@ -189,7 +195,9 @@ export function BookingsPage() {
             }}
             onStatusChange={handleStatusChange}
             onRecordPayment={(b) => setPaymentBooking(b)}
+            onProcessRefund={(b) => setRefundBooking(b)}
             onPrintInvoice={(b) => setInvoiceBooking(b)}
+            updatingBookingId={updatingBookingId}
           />
         )}
 
@@ -204,6 +212,12 @@ export function BookingsPage() {
           isOpen={!!paymentBooking}
           onClose={() => setPaymentBooking(null)}
           onSubmit={handleRecordPayment}
+        />
+
+        <ProcessRefundModal
+          booking={refundBooking as any}
+          isOpen={!!refundBooking}
+          onClose={() => setRefundBooking(null)}
         />
 
         <GuestInvoiceModal

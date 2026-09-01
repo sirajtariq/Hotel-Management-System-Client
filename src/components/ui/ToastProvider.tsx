@@ -101,8 +101,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
 
-      {/* Toast Notification Container */}
-      <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      {/* Toast Notification Container (Positioned Top Right to avoid covering bottom action buttons) */}
+      <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
         {toasts.map((item) => {
           let bgStyle = 'bg-slate-900 text-white border-slate-800';
           let icon = <Info className="h-5 w-5 text-indigo-400 shrink-0" />;

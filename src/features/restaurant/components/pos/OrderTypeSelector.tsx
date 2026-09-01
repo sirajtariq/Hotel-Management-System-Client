@@ -16,7 +16,7 @@ export function OrderTypeSelector({ selectedType, onSelectType }: OrderTypeSelec
   ] as const;
 
   return (
-    <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl">
+    <div className="grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-xl font-sans">
       {options.map((opt) => {
         const Icon = opt.icon;
         const isSelected = selectedType === opt.id;
@@ -26,14 +26,14 @@ export function OrderTypeSelector({ selectedType, onSelectType }: OrderTypeSelec
             type="button"
             onClick={() => onSelectType(opt.id as OrderType)}
             className={cn(
-              'flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all',
+              'flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer',
               isSelected
-                ? 'bg-white text-indigo-900 shadow-xs'
+                ? 'bg-white text-indigo-900 shadow-xs font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             )}
           >
-            <Icon className="h-3.5 w-3.5" />
-            <span className="truncate">{opt.label}</span>
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="whitespace-nowrap">{opt.label}</span>
           </button>
         );
       })}

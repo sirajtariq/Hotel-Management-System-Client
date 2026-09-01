@@ -13,7 +13,9 @@ interface BookingDataTableProps {
   onPageSizeChange: (size: number) => void;
   onStatusChange: (id: string, status: BookingStatus) => void;
   onRecordPayment: (booking: Booking) => void;
+  onProcessRefund?: (booking: Booking) => void;
   onPrintInvoice: (booking: Booking) => void;
+  updatingBookingId?: string | null;
 }
 
 export function BookingDataTable({
@@ -25,7 +27,9 @@ export function BookingDataTable({
   onPageSizeChange,
   onStatusChange,
   onRecordPayment,
+  onProcessRefund,
   onPrintInvoice,
+  updatingBookingId,
 }: BookingDataTableProps) {
   if (!bookings.length) {
     return (
@@ -54,8 +58,10 @@ export function BookingDataTable({
             <BookingTableRow
               key={booking.id}
               booking={booking}
+              updatingBookingId={updatingBookingId}
               onStatusChange={onStatusChange}
               onRecordPayment={onRecordPayment}
+              onProcessRefund={onProcessRefund}
               onPrintInvoice={onPrintInvoice}
             />
           ))}

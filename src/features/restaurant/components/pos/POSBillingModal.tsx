@@ -51,9 +51,9 @@ export function POSBillingModal({
     if (isOpen) {
       setIsSubmitting(false);
       accountService.getPaymentAccounts().then((accs) => {
-        const active = accs.filter((a) => a.is_active);
+        const active = accs.filter((a) => (a.isActive ?? a.is_active));
         setPaymentAccounts(active);
-        const defAcc = active.find((a) => a.is_default);
+        const defAcc = active.find((a) => (a.isDefault ?? a.is_default));
         if (defAcc) setSelectedAccountId(defAcc.id);
         else if (active.length > 0) setSelectedAccountId(active[0].id);
       });

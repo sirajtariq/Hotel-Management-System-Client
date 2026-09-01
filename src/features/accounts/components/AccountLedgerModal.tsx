@@ -106,7 +106,16 @@ export function AccountLedgerModal({
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {transactions.map((tx) => {
-                    const isInflow = tx.transaction_type === 'INFLOW' || tx.transaction_type === 'TRANSFER_IN';
+                    const typeStr = String(tx.transaction_type || (tx as any).transactionType || '').toUpperCase();
+                    const isInflow = typeStr === 'INFLOW' || typeStr === 'TRANSFER_IN';
+                    const rawDate = tx.created_at || (tx as any).createdAt || (tx as any).date;
+                    const dateDisplay = rawDate && !isNaN(new Date(rawDate).getTime())
+                      ? new Date(rawDate).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                      : 'N/A';
+                    const moduleStr = tx.source_module || (tx as any).sourceModule || 'TRANSACTION';
+                    const refId = tx.reference_id || (tx as any).referenceId;
+                    const balAfter = parseFloat(String(tx.balance_after ?? (tx as any).balanceAfter ?? 0));
+
                     return (
                       <tr key={tx.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="p-3">
@@ -122,11 +131,11 @@ export function AccountLedgerModal({
                             )}
                             <div>
                               <span className="font-bold text-slate-900 block text-[11px]">
-                                {tx.source_module}
+                                {moduleStr}
                               </span>
                               <span className="text-[10px] text-slate-400 flex items-center gap-1 font-normal">
                                 <Calendar className="h-2.5 w-2.5" />
-                                {new Date(tx.created_at).toLocaleDateString()}
+                                {dateDisplay}
                               </span>
                             </div>
                           </div>
@@ -134,11 +143,11 @@ export function AccountLedgerModal({
 
                         <td className="p-3 max-w-xs">
                           <span className="font-semibold text-slate-800 block text-[11px]">
-                            {tx.description || tx.transaction_type}
+                            {tx.description || typeStr}
                           </span>
-                          {tx.reference_id && (
+                          {refId && (
                             <span className="text-[10px] text-indigo-700 font-mono">
-                              Ref: {tx.reference_id}
+                              Ref: {refId}
                             </span>
                           )}
                         </td>
@@ -150,7 +159,7 @@ export function AccountLedgerModal({
                         </td>
 
                         <td className="p-3 text-right font-mono font-bold text-slate-900 text-xs">
-                          {formatPKR(parseFloat(String(tx.balance_after)))}
+                          {formatPKR(balAfter)}
                         </td>
                       </tr>
                     );

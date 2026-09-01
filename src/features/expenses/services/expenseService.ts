@@ -64,6 +64,35 @@ export const expenseService = {
     }
   },
 
+  async updateAccountHead(id: number, input: Partial<CreateAccountHeadInput>): Promise<AccountHead> {
+    try {
+      const response = await apiClient.patch<AccountHead>(`/expenses/account-heads/${id}/`, input);
+      return response.data;
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async deleteAccountHead(id: number): Promise<void> {
+    try {
+      await apiClient.delete(`/expenses/account-heads/${id}/`);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
   // --- Expenses ---
   async getExpenses(params?: {
     page?: number;
