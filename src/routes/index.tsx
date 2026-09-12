@@ -26,6 +26,16 @@ const PlatformAnalyticsPage = lazy(() => import('@/features/platform/pages/Platf
 const SystemUsersPage = lazy(() => import('@/features/users/pages/SystemUsersPage').then(m => ({ default: m.SystemUsersPage })));
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
+import { usePermission } from '@/hooks/usePermission';
+function RootRedirect() {
+  const { hasPermission } = usePermission();
+  if (hasPermission('dashboard:view')) return <Navigate to="/dashboard" replace />;
+  if (hasPermission('bookings:view')) return <Navigate to="/bookings" replace />;
+  if (hasPermission('restaurant:pos')) return <Navigate to="/restaurant/pos" replace />;
+  if (hasPermission('expenses:view')) return <Navigate to="/expenses" replace />;
+  return <Navigate to="/profile" replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -37,8 +47,15 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: '/', element: <Navigate to="/dashboard" replace /> },
-          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/', element: <RootRedirect /> },
+          { 
+            path: '/dashboard', 
+            element: (
+              <PermissionRoute permission="dashboard:view">
+                <DashboardPage />
+              </PermissionRoute>
+            )
+          },
           { path: '/profile', element: <ProfilePage /> },
 
           // --- Operations Routes ---

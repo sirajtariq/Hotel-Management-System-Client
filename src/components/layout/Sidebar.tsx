@@ -70,7 +70,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   // Operations Navigation Group
   const operationsNavItems: NavItemData[] = [
-    { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, perm: 'dashboard:view' },
     { name: 'Bookings & Front Desk', to: '/bookings', icon: CalendarCheck, perm: 'bookings:view' },
     { name: 'Restaurant POS', to: '/restaurant/pos', icon: UtensilsCrossed, perm: 'restaurant:pos' },
     { name: 'Kitchen Display', to: '/restaurant/kitchen', icon: ChefHat, perm: 'restaurant:kitchen' },
