@@ -3,23 +3,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Booking, RecordPaymentInput } from '@/types/bookings';
+import { Booking } from '@/types/bookings';
 import { PaymentAccount } from '@/types/accounts';
 import { accountService } from '@/features/accounts/services/accountService';
 import { formatPKR } from '@/lib/formatters';
 
-interface RecordPaymentModalProps {
+interface CheckoutPaymentModalProps {
   booking: Booking | null;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (input: RecordPaymentInput) => Promise<void>;
+  onSubmit: (input: {
+    bookingId: string;
+    extraChargeName?: string;
+    extraChargeAmount?: number;
+    paymentAmount?: number;
+    paymentAccountId?: string;
+    paymentMethod?: string;
+  }) => Promise<void>;
 }
 
-export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: RecordPaymentModalProps) {
+export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: CheckoutPaymentModalProps) {
   const [extraChargeName, setExtraChargeName] = useState('');
   const [extraChargeAmount, setExtraChargeAmount] = useState<number>(0);
 
-  const [amount, setAmount] = useState<number>(0);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [method, setMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
   const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<number | ''>('');
@@ -27,7 +34,7 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
 
   useEffect(() => {
     if (isOpen && booking) {
-      setAmount(booking.remainingAmount || 0);
+      setPaymentAmount(booking.remainingAmount || 0);
       setExtraChargeName('');
       setExtraChargeAmount(0);
       accountService.getPaymentAccounts().then((accs) => {
@@ -40,9 +47,10 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
     }
   }, [isOpen, booking]);
 
+  // Update payment amount when extra charge changes
   useEffect(() => {
     if (booking) {
-      setAmount((booking.remainingAmount || 0) + (extraChargeAmount || 0));
+      setPaymentAmount((booking.remainingAmount || 0) + (extraChargeAmount || 0));
     }
   }, [extraChargeAmount, booking]);
 
@@ -54,12 +62,11 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
     try {
       await onSubmit({
         bookingId: booking.id,
-        amount: Number(amount),
-        paymentMethod: method,
-        paymentAccountId: selectedAccountId ? Number(selectedAccountId) : undefined,
-        accountId: selectedAccountId ? Number(selectedAccountId) : undefined,
         extraChargeName: extraChargeName || undefined,
         extraChargeAmount: extraChargeAmount > 0 ? extraChargeAmount : undefined,
+        paymentAmount: Number(paymentAmount),
+        paymentMethod: method,
+        paymentAccountId: selectedAccountId ? String(selectedAccountId) : undefined,
       });
       onClose();
     } finally {
@@ -69,18 +76,20 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>Checkout & Settle Balance</DialogTitle>
           <DialogDescription>
             Reference: <span className="font-mono font-semibold">{booking.bookingReference}</span> ({booking.guest.fullName})
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3 mt-2 font-sans">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2 font-sans">
+          
+          {/* Bill Summary */}
           <div className="rounded-md bg-slate-50 p-3 border border-slate-200 text-xs space-y-1">
             <div className="flex justify-between text-slate-500">
-              <span>Total Bill:</span>
+              <span>Current Total Bill:</span>
               <span className="font-mono tabular-nums">{formatPKR(booking.totalAmount)}</span>
             </div>
             <div className="flex justify-between text-slate-500">
@@ -88,7 +97,7 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
               <span className="font-mono tabular-nums text-emerald-700">{formatPKR(booking.paidAmount)}</span>
             </div>
             <div className="flex justify-between font-bold text-slate-900 pt-1 border-t border-slate-200">
-              <span>Outstanding Due:</span>
+              <span>Current Outstanding Due:</span>
               <span className="font-mono tabular-nums text-rose-600">{formatPKR(booking.remainingAmount)}</span>
             </div>
           </div>
@@ -120,46 +129,60 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Payment Amount (PKR)</label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              className="text-xs font-mono font-semibold"
-            />
+          {/* Payment Details Section */}
+          <div className="space-y-3 pt-2">
+            <div className="flex justify-between items-center bg-slate-100 p-2 rounded-lg border border-slate-200">
+              <span className="text-xs font-bold text-slate-700">Total To Collect:</span>
+              <span className="text-sm font-black text-rose-700 font-mono">
+                {formatPKR((booking.remainingAmount || 0) + (extraChargeAmount || 0))}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Payment Amount</label>
+                <Input
+                  type="number"
+                  value={paymentAmount || ''}
+                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                  className="text-xs font-mono font-semibold"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">Payment Mode</label>
+                <Select value={method} onChange={(e) => setMethod(e.target.value as any)} className="text-xs">
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="bank_transfer">Transfer</option>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Deposit To Account</label>
+              <select
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                required
+              >
+                <option value="">-- Select Account --</option>
+                {paymentAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Payment Mode</label>
-            <Select value={method} onChange={(e) => setMethod(e.target.value as any)} className="text-xs">
-              <option value="cash">Cash Received</option>
-              <option value="card">Credit / Debit Card</option>
-              <option value="bank_transfer">Direct Bank Transfer</option>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Deposit To Account</label>
-            <select
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(Number(e.target.value))}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
-            >
-              {paymentAccounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3">
+          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={isSubmitting}>
-              {isSubmitting ? 'Posting...' : 'Record Transaction'}
+            <Button type="submit" size="sm" disabled={isSubmitting || paymentAmount < 0}>
+              {isSubmitting ? 'Processing...' : 'Collect & Check-Out'}
             </Button>
           </div>
         </form>

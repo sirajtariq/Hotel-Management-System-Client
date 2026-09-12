@@ -1,72 +1,116 @@
-import { useState, useEffect } from 'react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
+import { RoomStatusGrid } from '../components/RoomStatusGrid';
+import { RoomQuickActionModal } from '../components/RoomQuickActionModal';
 import { BookingDataTable } from '../components/BookingDataTable';
 import { BookingFormDrawer } from '../components/BookingFormDrawer';
 import { RecordPaymentModal } from '../components/RecordPaymentModal';
 import { ProcessRefundModal } from '../components/ProcessRefundModal';
 import { GuestInvoiceModal } from '../components/GuestInvoiceModal';
+import { CheckoutPaymentModal } from '../components/CheckoutPaymentModal';
+import { AddExtraChargeModal } from '../components/AddExtraChargeModal';
 import { TableSkeleton } from '@/components/ui/skeletons/TableSkeleton';
-import { Button } from '@/components/ui/button';
-import { Plus, Search, Shield } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { formatPKR } from '@/lib/formatters';
+import { Shield } from 'lucide-react';
 import { bookingService } from '../services/bookingService';
-import { Can } from '@/lib/rbac';
+import { roomService } from '@/features/rooms/services/roomService';
 import { toast } from '@/components/ui/ToastProvider';
 import { Booking, BookingStatus, CreateBookingInput, RecordPaymentInput } from '@/types/bookings';
+import { Room, HousekeepingStatus, RoomStatus } from '@/types/rooms';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { useDebounce } from '@/hooks/useDebounce';
-import { cn } from '@/lib/utils';
 
 export function BookingsPage() {
+  const queryClient = useQueryClient();
   const { user, is_impersonated } = useAuth();
   const role = user?.role?.toLowerCase();
   const isPureSuperAdmin = (role === 'super_admin' || role === 'superadmin') && !is_impersonated;
 
+  // View state
+  const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
+
+  // Rooms Data State
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+
+  // Bookings Data State
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 350);
-  const [statusTab, setStatusTab] = useState<string>('ALL');
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
+
+  // Modal / Drawer States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [preselectedRoomId, setPreselectedRoomId] = useState<string | undefined>(undefined);
+
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedRoomActiveBooking, setSelectedRoomActiveBooking] = useState<Booking | null>(null);
+  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
+
   const [paymentBooking, setPaymentBooking] = useState<Booking | null>(null);
   const [refundBooking, setRefundBooking] = useState<Booking | null>(null);
   const [invoiceBooking, setInvoiceBooking] = useState<Booking | null>(null);
+  const [checkoutWithPaymentBooking, setCheckoutWithPaymentBooking] = useState<Booking | null>(null);
+  const [extraChargeBooking, setExtraChargeBooking] = useState<Booking | null>(null);
   const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
 
-  // Reset pagination back to Page 1 on search or status filter change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch, statusTab]);
+  // Load Rooms
+  const fetchRooms = useCallback(async () => {
+    setIsLoadingRooms(true);
+    try {
+      const data = await roomService.getRooms(undefined, true);
+      setRooms(data);
+    } catch {
+      toast.error('Failed to load room inventory.');
+    } finally {
+      setIsLoadingRooms(false);
+    }
+  }, []);
 
-  useEffect(() => {
-    setIsLoading(true);
-    bookingService
-      .getBookings({
+  // Load Bookings
+  const fetchBookings = useCallback(async () => {
+    setIsLoadingBookings(true);
+    try {
+      const res = await bookingService.getBookings({
         page: currentPage,
         page_size: pageSize,
-        search: debouncedSearch,
-        status: statusTab !== 'ALL' ? statusTab : undefined,
-      })
-      .then((res) => {
-        setBookings(res.items);
-        setTotalCount(res.totalCount);
-      })
-      .finally(() => {
-        setIsLoading(false);
       });
-  }, [currentPage, pageSize, debouncedSearch, statusTab]);
+      setBookings(res.items || []);
+      setTotalCount(res.totalCount || 0);
+    } catch {
+      toast.error('Failed to load bookings ledger.');
+    } finally {
+      setIsLoadingBookings(false);
+    }
+  }, [currentPage, pageSize]);
 
+  useEffect(() => {
+    fetchRooms();
+    fetchBookings();
+  }, [fetchRooms, fetchBookings]);
+
+  // Combined Refresh
+  const handleRefreshAll = async () => {
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    await Promise.all([fetchRooms(), fetchBookings()]);
+    toast.success('Refreshed', 'Front desk & room statuses updated.');
+  };
+
+  // Status Changes for Bookings (Check-In, Check-Out, Cancel)
   const handleStatusChange = async (id: string, status: BookingStatus) => {
     if (isPureSuperAdmin || updatingBookingId === id) return;
     setUpdatingBookingId(id);
     try {
       const updated = await bookingService.updateBookingStatus(id, status);
       setBookings((prev) => (Array.isArray(prev) ? prev : []).map((b) => (b.id === id ? { ...b, ...updated } : b)));
-      toast.success('Reservation Updated', `Booking status changed to ${String(status).toUpperCase().replace('_', ' ')}`);
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      await fetchRooms();
+      toast.success('Status Updated', `Booking changed to ${String(status).toUpperCase().replace('_', ' ')}`);
     } catch (err: any) {
       toast.error('Update Failed', err?.message || 'Could not update booking status.');
     } finally {
@@ -74,137 +118,210 @@ export function BookingsPage() {
     }
   };
 
-  const handleAddBooking = async (data: CreateBookingInput) => {
-    if (isPureSuperAdmin) return;
+  // Housekeeping update
+  const handleMarkHousekeeping = async (roomId: string, hkStatus: HousekeepingStatus) => {
     try {
-      const created = await bookingService.createBooking(data);
-      setBookings((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
-      toast.success('Reservation Created', `Booking ${created.bookingReference || 'confirmed'}`);
+      await roomService.updateHousekeepingStatus(roomId, hkStatus);
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      await fetchRooms();
+      toast.success('Housekeeping Updated', `Room housekeeping status set to ${hkStatus}`);
     } catch (err: any) {
-      toast.error('Booking Failed', err?.message || 'Could not create new reservation.');
+      toast.error('Update Failed', err?.message || 'Could not update housekeeping status.');
     }
   };
 
+  // Operational Room Status update
+  const handleUpdateRoomStatus = async (roomId: string, status: RoomStatus) => {
+    try {
+      await roomService.updateRoomStatus(roomId, status);
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      await fetchRooms();
+      toast.success('Room Status Updated', `Room status set to ${status}`);
+    } catch (err: any) {
+      toast.error('Update Failed', err?.message || 'Could not update room status.');
+    }
+  };
+
+  // Handle New Booking Creation (supports Create Reservation vs Instant Check-In)
+  const handleAddBooking = async (data: CreateBookingInput, autoCheckIn = false) => {
+    if (isPureSuperAdmin) return;
+    try {
+      const created = await bookingService.createBooking(data);
+      if (autoCheckIn && created?.id) {
+        await bookingService.updateBookingStatus(created.id, 'checked_in');
+        toast.success('Instant Check-In Completed', `Guest checked in immediately.`);
+      } else {
+        toast.success('Reservation Created', `Booking ${created.bookingReference || 'confirmed'}`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      await Promise.all([fetchRooms(), fetchBookings()]);
+    } catch (err: any) {
+      toast.error('Booking Failed', err?.message || 'Could not create reservation.');
+    }
+  };
+
+  // Handle Recording Payment
   const handleRecordPayment = async (input: RecordPaymentInput) => {
     if (isPureSuperAdmin) return;
     try {
       const updated = await bookingService.recordPayment(input);
       setBookings((prev) => (Array.isArray(prev) ? prev : []).map((b) => (b.id === input.bookingId ? updated : b)));
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       toast.success('Payment Recorded', `Payment of PKR ${input.amount.toLocaleString()} received.`);
     } catch {
       toast.error('Payment Failed', 'Could not record payment transaction.');
     }
   };
 
-  const statusTabs = [
-    { label: 'All Bookings', value: 'ALL' },
-    { label: 'Reserved / Confirmed', value: 'RESERVED' },
-    { label: 'Checked In', value: 'CHECKED_IN' },
-    { label: 'Checked Out', value: 'CHECKED_OUT' },
-    { label: 'Cancelled', value: 'CANCELLED' },
-  ];
+  const handleCheckoutWithPayment = async (input: any) => {
+    if (isPureSuperAdmin) return;
+    try {
+      const updated = await bookingService.checkoutWithPayment(input);
+      setBookings((prev) => (Array.isArray(prev) ? prev : []).map((b) => (b.id === input.bookingId ? { ...b, ...updated } : b)));
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['payment-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      await fetchRooms();
+      toast.success('Checkout Successful', 'Guest checked out and payment settled.');
+    } catch (err: any) {
+      toast.error('Checkout Failed', err?.message || 'Could not process checkout with payment.');
+    }
+  };
+
+  const handleAddExtraCharge = async (data: any) => {
+    try {
+      await bookingService.addExtraCharge(data);
+      toast.success(
+        'Charge Posted',
+        `Successfully posted ${formatPKR(data.amount)} charge to the bill.`
+      );
+      await fetchBookings();
+    } catch (err: any) {
+      toast.error('Posting Failed', err?.message || 'Could not post extra charge.');
+    }
+  };
+
+  // Card Click Handler
+  const handleRoomClick = (room: Room, activeBooking: Booking | null) => {
+    const statusUpper = String(room.status || 'AVAILABLE').toUpperCase();
+    const hkUpper = String(room.housekeeping_status || 'CLEAN').toUpperCase();
+    const isAvailable = statusUpper === 'AVAILABLE' && (hkUpper === 'CLEAN' || hkUpper === 'INSPECTED');
+
+    if (isAvailable && !activeBooking) {
+      // ⚡ Direct In-Room Reservation & Booking Modal on Card Click
+      setPreselectedRoomId(room.id);
+      setIsDrawerOpen(true);
+    } else {
+      // Open QuickActionModal for reserved/occupied/dirty/maintenance rooms
+      setSelectedRoom(room);
+      setSelectedRoomActiveBooking(activeBooking);
+      setIsQuickActionOpen(true);
+    }
+  };
 
   return (
     <PermissionGuard permission="bookings:view" moduleName="Reservations & Bookings">
       <div className="space-y-6">
         {isPureSuperAdmin && (
-          <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3 flex items-center justify-between text-xs text-indigo-900 font-medium">
+          <div className="rounded-2xl bg-indigo-50 border border-indigo-200 p-3.5 flex items-center justify-between text-xs text-indigo-900 font-medium">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-indigo-600 shrink-0" />
               <span>
-                <strong>Platform Overview (Read-Only)</strong> — You are viewing live bookings across tenants. Use <strong>'Login as Tenant'</strong> from the Tenants page to perform operations.
+                <strong>Platform Overview (Read-Only)</strong> — You are viewing live front desk inventory across tenants. Use <strong>'Login as Tenant'</strong> from the Tenants page to perform operations.
               </span>
             </div>
           </div>
         )}
 
-        <PageHeader
-          title="Reservations & Bookings"
-          description="Guest booking ledger, check-in dispatch, payments in PKR, and printable invoices"
-          actions={
-            !isPureSuperAdmin ? (
-              <Can permission="bookings:create">
-                <Button size="sm" className="gap-1.5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs cursor-pointer" onClick={() => setIsDrawerOpen(true)}>
-                  <Plus className="h-3.5 w-3.5" />
-                  New Reservation
-                </Button>
-              </Can>
-            ) : undefined
-          }
-        />
-
-        {/* Filter Controls: Realtime Search & Status Filter Tabs */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search by guest name, phone, room, or invoice ref..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 pr-8 text-xs h-9 bg-slate-50/50 border-slate-200 focus:bg-white"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-
-            {/* Status Filter Tabs */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 font-sans">
-              {statusTabs.map((tab) => {
-                const isActive = statusTab === tab.value;
-                return (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setStatusTab(tab.value)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
-                      isActive
-                        ? 'bg-indigo-900 text-white shadow-2xs'
-                        : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <TableSkeleton rows={8} cols={7} />
-        ) : (
-          <BookingDataTable
+        {/* Primary Operational View: Live Room Status Grid */}
+        {viewMode === 'GRID' ? (
+          <RoomStatusGrid
+            rooms={rooms}
             bookings={bookings}
-            totalCount={totalCount}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setCurrentPage(1);
-            }}
-            onStatusChange={handleStatusChange}
-            onRecordPayment={(b) => setPaymentBooking(b)}
-            onProcessRefund={(b) => setRefundBooking(b)}
-            onPrintInvoice={(b) => setInvoiceBooking(b)}
-            updatingBookingId={updatingBookingId}
+            isLoading={isLoadingRooms || isLoadingBookings}
+            onRefresh={handleRefreshAll}
+            onRoomClick={handleRoomClick}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
+        ) : (
+          /* Alternate View: Tabular Booking Ledger */
+          <div className="space-y-4 font-sans">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Bookings & Reservations Ledger</h2>
+                <p className="text-xs text-slate-500">Tabular ledger of guest reservations, stay dates, and check-in statuses</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewMode('GRID')}
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-900 text-white font-bold text-xs hover:bg-indigo-950 shadow-xs cursor-pointer"
+              >
+                Switch to Live Room Grid
+              </button>
+            </div>
+
+            {isLoadingBookings ? (
+              <TableSkeleton rows={8} cols={7} />
+            ) : (
+              <BookingDataTable
+                bookings={bookings}
+                totalCount={totalCount}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setCurrentPage(1);
+                }}
+                onStatusChange={handleStatusChange}
+                onRecordPayment={(b) => setPaymentBooking(b)}
+                onProcessRefund={(b) => setRefundBooking(b)}
+                onPrintInvoice={(b) => setInvoiceBooking(b)}
+                updatingBookingId={updatingBookingId}
+              />
+            )}
+          </div>
         )}
 
+        {/* Quick Action Modal for Room Card Clicks */}
+        <RoomQuickActionModal
+          room={selectedRoom}
+          activeBooking={selectedRoomActiveBooking}
+          isOpen={isQuickActionOpen}
+          onClose={() => {
+            setIsQuickActionOpen(false);
+            setSelectedRoom(null);
+            setSelectedRoomActiveBooking(null);
+          }}
+          onNewBooking={(roomId) => {
+            setPreselectedRoomId(roomId);
+            setIsDrawerOpen(true);
+          }}
+          onCheckIn={(bookingId) => handleStatusChange(bookingId, 'checked_in')}
+          onCheckOut={(booking) => handleStatusChange(booking.id, 'checked_out')}
+          onCheckOutWithPayment={(booking) => setCheckoutWithPaymentBooking(booking)}
+          onRecordPayment={(b) => setPaymentBooking(b)}
+          onViewFolio={(b) => setInvoiceBooking(b)}
+          onMarkHousekeeping={handleMarkHousekeeping}
+          onUpdateRoomStatus={handleUpdateRoomStatus}
+          onAddExtraCharge={(b) => setExtraChargeBooking(b)}
+        />
+
+        {/* Drawer & Action Modals */}
         <BookingFormDrawer
           isOpen={isDrawerOpen}
-          onClose={() => setIsDrawerOpen(false)}
+          onClose={() => {
+            setIsDrawerOpen(false);
+            setPreselectedRoomId(undefined);
+          }}
           onSubmit={handleAddBooking}
+          preselectedRoomId={preselectedRoomId}
         />
 
         <RecordPaymentModal
@@ -224,6 +341,20 @@ export function BookingsPage() {
           booking={invoiceBooking}
           isOpen={!!invoiceBooking}
           onClose={() => setInvoiceBooking(null)}
+        />
+
+        <CheckoutPaymentModal
+          booking={checkoutWithPaymentBooking}
+          isOpen={!!checkoutWithPaymentBooking}
+          onClose={() => setCheckoutWithPaymentBooking(null)}
+          onSubmit={handleCheckoutWithPayment}
+        />
+
+        <AddExtraChargeModal
+          booking={extraChargeBooking}
+          isOpen={!!extraChargeBooking}
+          onClose={() => setExtraChargeBooking(null)}
+          onSubmit={handleAddExtraCharge}
         />
       </div>
     </PermissionGuard>

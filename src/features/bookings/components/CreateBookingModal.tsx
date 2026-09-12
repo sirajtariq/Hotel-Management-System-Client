@@ -1,22 +1,39 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CreateBookingInput, BookingMode, DiscountType } from '@/types/bookings';
 import { roomService, AvailableRoomItem } from '@/features/rooms/services/roomService';
-import { propertyService } from '@/features/properties/services/propertyService';
 import { Property } from '@/types/properties';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { formatPKR, formatDate } from '@/lib/formatters';
-import { Moon, Clock, Calendar, Check, AlertCircle, Calculator, Sparkles, Loader2, Building } from 'lucide-react';
+import { staffService } from '@/features/staff/services/staffService';
+import { StaffMember } from '@/types/staff';
+import { PaymentAccount } from '@/types/accounts';
+import { accountService } from '@/features/accounts/services/accountService';
+import {
+  Moon,
+  Clock,
+  Calendar,
+  AlertCircle,
+  Calculator,
+  Sparkles,
+  Loader2,
+  Bed,
+  Check,
+  LogIn,
+  CreditCard,
+  X,
+  UserCheck,
+  Tag,
+  Users
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 import { usePropertySelector } from '@/features/properties/hooks/usePropertySelector';
 
 interface CreateBookingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateBookingInput) => Promise<void>;
+  onSubmit: (data: CreateBookingInput, autoCheckIn?: boolean) => Promise<void>;
   preselectedRoomId?: string;
 }
 
@@ -43,6 +60,10 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const [guestPhone, setGuestPhone] = useState<string>('');
   const [cnicOrPassport, setCnicOrPassport] = useState<string>('');
 
+  // Dynamic Room Rate State (Dynamic pricing per reservation)
+  const [customNightlyRate, setCustomNightlyRate] = useState<number | null>(null);
+  const [customHourlyRate, setCustomHourlyRate] = useState<number | null>(null);
+
   // Nightly state
   const todayStr = new Date().toISOString().split('T')[0];
   const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -53,7 +74,6 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const [hourlyDate, setHourlyDate] = useState<string>(todayStr);
   const [startTime, setStartTime] = useState<string>('14:00');
   const [durationHours, setDurationHours] = useState<number>(4);
-  const [customHours, setCustomHours] = useState<string>('4');
 
   // Financials
   const [discountType, setDiscountType] = useState<DiscountType>('FLAT');
@@ -61,9 +81,18 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const [taxRate, setTaxRate] = useState<number>(0);
   const [customTotalAmount, setCustomTotalAmount] = useState<number | null>(null);
   const [initialPayment, setInitialPayment] = useState<number>(0);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [paymentAccountId, setPaymentAccountId] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submittingAction, setSubmittingAction] = useState<'RESERVE' | 'CHECK_IN' | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
+
+  // Manager Commission & Referrals
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [selectedCommissionRecipientId, setSelectedCommissionRecipientId] = useState<string>('');
+  const [commissionAmount, setCommissionAmount] = useState<number>(0);
 
   // Load properties list & set initial property selection via cached selector
   useEffect(() => {
@@ -75,6 +104,27 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       } else if (propsList.length > 0) {
         setSelectedPropertyId(String(propsList[0].id));
       }
+
+      // Fetch active staff for commission agent dropdown
+      staffService.getStaff({ page_size: 100 }).then((res) => {
+        setStaffMembers(res.items.filter((s) => s.is_active !== false));
+      }).catch(() => {
+        setStaffMembers([]);
+      });
+
+      // Fetch payment accounts
+      accountService.getPaymentAccounts().then((accs) => {
+        const active = accs.filter((a) => a.is_active);
+        setPaymentAccounts(active);
+        const defAcc = active.find((a) => a.is_default);
+        if (defAcc) setPaymentAccountId(String(defAcc.id));
+        else if (active.length > 0) setPaymentAccountId(String(active[0].id));
+      });
+    } else {
+      setDiscountValue(0);
+      setSelectedCommissionRecipientId('');
+      setCommissionAmount(0);
+      setPaymentAccountId('');
     }
   }, [isOpen, cachedProperties, isAdmin, userAssignedPropId]);
 
@@ -118,6 +168,22 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
     return availableRooms.find((r) => String(r.id) === String(selectedRoomId)) || availableRooms[0] || null;
   }, [availableRooms, selectedRoomId]);
 
+  // Update dynamic rate suggestion when room changes
+  useEffect(() => {
+    if (selectedRoom) {
+      if (selectedRoom.basePrice && selectedRoom.basePrice > 0) {
+        setCustomNightlyRate(selectedRoom.basePrice);
+      } else if (customNightlyRate === null) {
+        setCustomNightlyRate(5000);
+      }
+      if (selectedRoom.hourlyRate && selectedRoom.hourlyRate > 0) {
+        setCustomHourlyRate(selectedRoom.hourlyRate);
+      } else if (customHourlyRate === null) {
+        setCustomHourlyRate(1000);
+      }
+    }
+  }, [selectedRoom]);
+
   // Hourly end time auto-calculation
   const calculatedEndTime = useMemo(() => {
     if (!startTime) return '18:00';
@@ -137,16 +203,16 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
     return Math.max(1, diff);
   }, [checkInDate, checkOutDate]);
 
-  // Auto-computed Total, Subtotal, Discount, Tax & Rates
-  const defaultNightlyRate = selectedRoom?.basePrice || 15000;
-  const defaultHourlyRate = selectedRoom?.hourlyRate || Math.round(defaultNightlyRate / 6);
+  // Dynamic pricing calculation
+  const effectiveNightlyRate = customNightlyRate !== null ? customNightlyRate : (selectedRoom?.basePrice || 5000);
+  const effectiveHourlyRate = customHourlyRate !== null ? customHourlyRate : (selectedRoom?.hourlyRate || 1000);
 
   const subtotalAmount = useMemo(() => {
     if (bookingMode === 'HOURLY') {
-      return durationHours * defaultHourlyRate;
+      return durationHours * effectiveHourlyRate;
     }
-    return totalNights * defaultNightlyRate;
-  }, [bookingMode, durationHours, defaultHourlyRate, totalNights, defaultNightlyRate]);
+    return totalNights * effectiveNightlyRate;
+  }, [bookingMode, durationHours, effectiveHourlyRate, totalNights, effectiveNightlyRate]);
 
   const discountAmount = useMemo(() => {
     if (discountType === 'PERCENTAGE') {
@@ -170,8 +236,12 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
   const finalTotalAmount = customTotalAmount !== null ? customTotalAmount : calculatedTotalAmount;
   const remainingBalance = Math.max(0, finalTotalAmount - initialPayment);
 
-  // Form submit handler
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const canInstantCheckIn = bookingMode === 'NIGHTLY' ? checkInDate === todayStr : hourlyDate === todayStr;
+
+  if (!isOpen) return null;
+
+  // Form submit handler supporting both "Create Reservation" and "Instant Check-In"
+  const handleFormSubmit = async (e: React.FormEvent, autoCheckIn = false) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -179,16 +249,17 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       setErrorMsg('Guest full name is required.');
       return;
     }
-    if (!guestPhone.trim()) {
-      setErrorMsg('Guest mobile phone is required.');
-      return;
-    }
     if (!selectedRoomId) {
       setErrorMsg('Please select a room unit.');
       return;
     }
+    if (discountValue > subtotalAmount) {
+      setErrorMsg(`Discount amount (${formatPKR(discountValue)}) cannot exceed Gross Room Total (${formatPKR(subtotalAmount)}).`);
+      return;
+    }
 
     setIsSubmitting(true);
+    setSubmittingAction(autoCheckIn ? 'CHECK_IN' : 'RESERVE');
 
     let checkInISO = '';
     let checkOutISO = '';
@@ -216,525 +287,629 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       room: isNaN(Number(selectedRoomId)) ? selectedRoomId : Number(selectedRoomId),
       guestName: guestName.trim(),
       guestEmail: guestEmail.trim() || undefined,
-      guestPhone: guestPhone.trim(),
+      guestPhone: guestPhone.trim() || 'N/A', // Phone number is optional now
       cnicOrPassport: cnicOrPassport.trim() || undefined,
       bookingType: bookingMode,
       checkIn: checkInISO,
       checkOut: checkOutISO,
       totalDuration: durationLabel,
-      rateApplied: bookingMode === 'HOURLY' ? defaultHourlyRate : defaultNightlyRate,
+      rateApplied: bookingMode === 'HOURLY' ? effectiveHourlyRate : effectiveNightlyRate,
+      subtotalAmount: subtotalAmount,
       discountType: discountType,
       discountValue: discountValue,
+      discountAmount: discountAmount,
+      commissionRecipient: selectedCommissionRecipientId ? (isNaN(Number(selectedCommissionRecipientId)) ? selectedCommissionRecipientId : Number(selectedCommissionRecipientId)) : undefined,
+      commissionAmount: commissionAmount > 0 ? commissionAmount : 0,
       taxRate: taxRate,
       totalAmount: finalTotalAmount,
       paidAmount: initialPayment,
+      paymentMethod: initialPayment > 0 ? paymentMethod : undefined,
       notes: notes.trim() || undefined,
     };
 
     try {
-      await onSubmit(cleanPayload);
+      await onSubmit(cleanPayload, autoCheckIn);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to create reservation.');
     } finally {
       setIsSubmitting(false);
+      setSubmittingAction(null);
     }
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="sm:max-w-lg overflow-y-auto p-6 bg-white">
-        <SheetHeader className="pb-3 border-b border-slate-100">
-          <SheetTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span>New Guest Reservation</span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-              Dual Mode
-            </span>
-          </SheetTitle>
-        </SheetHeader>
-
-        {errorMsg && (
-          <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleFormSubmit} className="space-y-4 mt-4 text-xs">
-          {/* Top Segmented Booking Mode Selector */}
-          <div className="bg-slate-100/90 p-1.5 rounded-xl border border-slate-200/80 flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setBookingMode('NIGHTLY');
-                setCustomTotalAmount(null);
-              }}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none',
-                bookingMode === 'NIGHTLY'
-                  ? 'bg-indigo-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              )}
-            >
-              <Moon className="h-3.5 w-3.5" />
-              <span>Nightly Stay (Per Day)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setBookingMode('HOURLY');
-                setCustomTotalAmount(null);
-              }}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none',
-                bookingMode === 'HOURLY'
-                  ? 'bg-indigo-900 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              )}
-            >
-              <Clock className="h-3.5 w-3.5" />
-              <span>Hourly / Short Stay</span>
-            </button>
-          </div>
-
-          {/* Guest Information */}
-          <div className="space-y-3 pt-1">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Guest Full Name *</label>
-              <Input
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="e.g. Arthur Morgan"
-                className="text-xs h-9"
-              />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs font-sans">
+      <div className="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150 overflow-hidden">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-5 md:px-6 md:py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-indigo-900 text-white flex items-center justify-center font-bold shadow-xs">
+              <UserCheck className="h-5 w-5" />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Mobile Phone *</label>
-                <Input
-                  value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
-                  placeholder="+92 300 1234567"
-                  className="text-xs h-9 font-mono"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Email Address</label>
-                <Input
-                  value={guestEmail}
-                  onChange={(e) => setGuestEmail(e.target.value)}
-                  placeholder="guest@gmail.com"
-                  className="text-xs h-9"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">CNIC / Passport Number</label>
-              <Input
-                value={cnicOrPassport}
-                onChange={(e) => setCnicOrPassport(e.target.value)}
-                placeholder="42101-1234567-1"
-                className="text-xs h-9 font-mono"
-              />
-            </div>
-          </div>
-
-          {/* Property & Room Selection */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                <span>Property *</span>
-                {!isAdmin && (
-                  <span className="text-[10px] text-slate-400 font-normal">(Assigned)</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">New Guest Reservation</h2>
+                {preselectedRoomId && selectedRoom && (
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    Pre-selected Room
+                  </span>
                 )}
-              </label>
-              <select
-                value={selectedPropertyId}
-                disabled={!isAdmin && properties.length <= 1}
-                onChange={(e) => setSelectedPropertyId(e.target.value)}
-                className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-75 disabled:cursor-not-allowed"
-              >
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                <span>Available Room *</span>
-                {isLoadingRooms && <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />}
-              </label>
-              <select
-                value={selectedRoomId}
-                onChange={(e) => setSelectedRoomId(e.target.value)}
-                className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                {availableRooms.length === 0 ? (
-                  <option value="">No available rooms in property</option>
-                ) : (
-                  availableRooms.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      Room {r.roomNumber} — {r.roomTypeName} ({formatPKR(r.basePrice)}/nt)
-                    </option>
-                  ))
-                )}
-              </select>
+              </div>
+              <p className="text-xs text-slate-500 font-medium">Create reservation or perform instant check-in</p>
             </div>
           </div>
 
-          {/* Conditional Mode Form Controls */}
-          {bookingMode === 'NIGHTLY' ? (
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/90 space-y-3">
-              <div className="text-[11px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-indigo-600" />
-                <span>Nightly Stay Schedule</span>
-              </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-700">Check-In Date</label>
-                  <Input
-                    type="date"
-                    value={checkInDate}
-                    onChange={(e) => setCheckInDate(e.target.value)}
-                    className="text-xs h-8.5 bg-white"
-                  />
-                  <span className="text-[10px] text-slate-400">Standard: 02:00 PM</span>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-700">Check-Out Date</label>
-                  <Input
-                    type="date"
-                    value={checkOutDate}
-                    onChange={(e) => setCheckOutDate(e.target.value)}
-                    className="text-xs h-8.5 bg-white"
-                  />
-                  <span className="text-[10px] text-slate-400">Standard: 12:00 PM</span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Applied Rate:</span>
-                <span className="font-bold text-slate-900 font-mono">{formatPKR(defaultNightlyRate)} / night</span>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/90 space-y-3">
-              <div className="text-[11px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-indigo-600" />
-                <span>Hourly Short Stay Schedule</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-700">Stay Date</label>
-                  <Input
-                    type="date"
-                    value={hourlyDate}
-                    onChange={(e) => setHourlyDate(e.target.value)}
-                    className="text-xs h-8.5 bg-white"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-700">Start Time</label>
-                  <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="text-xs h-8.5 bg-white font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Direct Custom Duration Input & Quick Select Pills */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Stay Duration (Hours) *</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Enter custom duration or select preset</span>
-                </label>
-                
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={72}
-                    value={durationHours}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      setDurationHours(isNaN(val) || val < 1 ? 1 : val);
-                    }}
-                    className="w-28 text-xs h-8.5 font-mono font-bold text-slate-900 bg-white"
-                  />
-                  
-                  <div className="flex flex-wrap items-center gap-1">
-                    {[1, 2, 3, 4, 6, 8, 12].map((h) => (
-                      <button
-                        key={h}
-                        type="button"
-                        onClick={() => setDurationHours(h)}
-                        className={cn(
-                          'px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer',
-                          durationHours === h
-                            ? 'bg-indigo-900 text-white shadow-2xs'
-                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                        )}
-                      >
-                        {h}h
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Calculated Check-Out:</span>
-                <span className="font-bold text-indigo-900 font-mono">{calculatedEndTime}</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Hourly Rate:</span>
-                <span className="font-bold text-slate-900 font-mono">{formatPKR(defaultHourlyRate)} / hr</span>
-              </div>
+        {/* Scrollable Modal Form Body */}
+        <div className="p-5 md:p-6 overflow-y-auto space-y-4 text-xs">
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
-          {/* Live Summary Badge */}
-          <div className="rounded-xl bg-indigo-50/90 border border-indigo-200/80 p-3.5 flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-indigo-600" />
-                Live Booking Summary
+          <form className="space-y-4">
+            {/* Locked Room Metadata Banner (If triggered via Room Card Click) */}
+            {preselectedRoomId && selectedRoom && (
+              <div className="p-3.5 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-indigo-950 flex items-center justify-between font-medium shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-indigo-900 text-white flex items-center justify-center font-bold shrink-0">
+                    <Bed className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm font-mono text-slate-900">Room #{selectedRoom.roomNumber}</span>
+                      <span className="text-[10px] font-bold bg-white text-indigo-900 px-2 py-0.5 rounded-md border border-indigo-200">
+                        {selectedRoom.floor ? `Fl ${selectedRoom.floor}` : 'Fl 1'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-indigo-700 font-medium">{selectedRoom.roomTypeName || 'Standard Room'}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase font-bold bg-indigo-900 text-white px-2.5 py-1 rounded-lg shrink-0">
+                  Target Room
+                </span>
               </div>
-              <div className="text-xs font-semibold text-indigo-950 flex items-center gap-1.5">
-                {bookingMode === 'NIGHTLY' ? (
-                  <>
-                    <Calendar className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                    <span>{formatDate(checkInDate)} – {formatDate(checkOutDate)} ({totalNights} Night{totalNights > 1 ? 's' : ''})</span>
-                  </>
-                ) : (
-                  <>
-                    <Clock className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                    <span>{formatDate(hourlyDate)}, {startTime} – {calculatedEndTime} ({durationHours} Hours)</span>
-                  </>
+            )}
+
+            {/* Top Segmented Booking Mode Selector */}
+            <div className="bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingMode('NIGHTLY');
+                  setCustomTotalAmount(null);
+                }}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none',
+                  bookingMode === 'NIGHTLY'
+                    ? 'bg-indigo-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                 )}
-              </div>
+              >
+                <Moon className="h-3.5 w-3.5" />
+                <span>Nightly Stay (Per Day)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingMode('HOURLY');
+                  setCustomTotalAmount(null);
+                }}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none',
+                  bookingMode === 'HOURLY'
+                    ? 'bg-indigo-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                )}
+              >
+                <Clock className="h-3.5 w-3.5" />
+                <span>Hourly / Short Stay</span>
+              </button>
             </div>
 
-            <div className="text-right">
-              <div className="text-[10px] text-indigo-700 font-medium">Auto Computed</div>
-              <div className="text-sm font-black text-indigo-900 font-mono">
-                {formatPKR(finalTotalAmount)}
-              </div>
-            </div>
-          </div>
-
-          {/* Financials & Manual Override */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/90 space-y-3">
-            <div className="text-[11px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
-              <Calculator className="h-3.5 w-3.5 text-indigo-600" />
-              <span>Billing, Discount & Tax Ledger</span>
-            </div>
-
-            {/* Discount Row */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Guest Information */}
+            <div className="space-y-3 pt-1">
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Discount</span>
-                  <div className="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType('FLAT')}
-                      className={cn('px-1.5 py-0.5 rounded font-semibold cursor-pointer', discountType === 'FLAT' ? 'bg-white text-indigo-900 shadow-2xs' : 'text-slate-600')}
-                    >
-                      PKR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDiscountType('PERCENTAGE')}
-                      className={cn('px-1.5 py-0.5 rounded font-semibold cursor-pointer', discountType === 'PERCENTAGE' ? 'bg-white text-indigo-900 shadow-2xs' : 'text-slate-600')}
-                    >
-                      %
-                    </button>
-                  </div>
-                </label>
-                <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-slate-700">Guest Full Name *</label>
+                <Input
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="e.g. Arthur Morgan"
+                  className="text-xs h-9 bg-white"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Mobile Phone / WhatsApp <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                  </label>
                   <Input
-                    type="number"
-                    min="0"
-                    value={discountValue}
-                    onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                    placeholder={discountType === 'PERCENTAGE' ? 'e.g. 10' : 'e.g. 1000'}
-                    className="text-xs font-mono font-bold text-slate-900 h-8.5 bg-white"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                    placeholder="+92 300 1234567"
+                    className="text-xs h-9 font-mono bg-white"
                   />
-                  <div className="flex items-center gap-1">
-                    {discountType === 'PERCENTAGE'
-                      ? [0, 5, 10, 15, 20].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => setDiscountValue(val)}
-                            className={cn(
-                              'px-1.5 py-1 rounded text-[10px] font-semibold transition-all cursor-pointer',
-                              discountValue === val
-                                ? 'bg-indigo-900 text-white shadow-2xs'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                            )}
-                          >
-                            {val}%
-                          </button>
-                        ))
-                      : [0, 500, 1000, 2000].map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => setDiscountValue(val)}
-                            className={cn(
-                              'px-1.5 py-1 rounded text-[10px] font-semibold transition-all cursor-pointer',
-                              discountValue === val
-                                ? 'bg-indigo-900 text-white shadow-2xs'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
-                            )}
-                          >
-                            {val >= 1000 ? `${val / 1000}k` : val}
-                          </button>
-                        ))}
-                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Email Address <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <Input
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    placeholder="guest@gmail.com"
+                    className="text-xs h-9 bg-white"
+                  />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700">Applied Discount Amount</label>
-                <div className="h-8.5 px-3 rounded-md bg-emerald-50 border border-emerald-200 flex items-center font-mono font-semibold text-emerald-800 text-xs">
-                  -{formatPKR(discountAmount)} {discountType === 'PERCENTAGE' && discountValue > 0 ? `(${discountValue}%)` : ''}
+                <label className="text-xs font-semibold text-slate-700">CNIC / Passport Number (Optional)</label>
+                <Input
+                  value={cnicOrPassport}
+                  onChange={(e) => setCnicOrPassport(e.target.value)}
+                  placeholder="42101-1234567-1"
+                  className="text-xs h-9 font-mono bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Property & Room Selection (If not preselected) */}
+            {!preselectedRoomId && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Property *</span>
+                    {!isAdmin && <span className="text-[10px] text-slate-400 font-normal">(Assigned)</span>}
+                  </label>
+                  <select
+                    value={selectedPropertyId}
+                    disabled={!isAdmin && properties.length <= 1}
+                    onChange={(e) => setSelectedPropertyId(e.target.value)}
+                    className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                  >
+                    {properties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Available Room *</span>
+                    {isLoadingRooms && <Loader2 className="h-3 w-3 animate-spin text-indigo-600" />}
+                  </label>
+                  <select
+                    value={selectedRoomId}
+                    onChange={(e) => setSelectedRoomId(e.target.value)}
+                    className="w-full h-9 rounded-md border border-slate-200 bg-slate-50/50 px-3 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    {availableRooms.length === 0 ? (
+                      <option value="">No available rooms in property</option>
+                    ) : (
+                      availableRooms.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          Room {r.roomNumber} — {r.roomTypeName}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Pricing Rate Input & Stay Controls */}
+            {bookingMode === 'NIGHTLY' ? (
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+                <div className="text-[11px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                  <span>Nightly Stay Schedule & Pricing</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Check-In Date</label>
+                    <Input
+                      type="date"
+                      value={checkInDate}
+                      onChange={(e) => setCheckInDate(e.target.value)}
+                      className="text-xs h-8.5 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Check-Out Date</label>
+                    <Input
+                      type="date"
+                      value={checkOutDate}
+                      onChange={(e) => setCheckOutDate(e.target.value)}
+                      className="text-xs h-8.5 bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Rate per Night Input */}
+                <div className="space-y-1 pt-1">
+                  <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Rate per Night (PKR) *</span>
+                    <span className="text-[10px] text-indigo-600 font-medium">(Receptionist Entered)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={effectiveNightlyRate}
+                    onChange={(e) => {
+                      setCustomNightlyRate(parseFloat(e.target.value) || 0);
+                      setCustomTotalAmount(null);
+                    }}
+                    placeholder="e.g. 5000"
+                    className="text-xs font-mono font-bold text-slate-900 h-8.5 bg-white"
+                    required
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Estimated Room Subtotal:</span>
+                  <span className="font-bold text-slate-900 font-mono">
+                    {totalNights} night{totalNights > 1 ? 's' : ''} × {formatPKR(effectiveNightlyRate)} = {formatPKR(subtotalAmount)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+                <div className="text-[11px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-indigo-600" />
+                  <span>Hourly Short Stay Schedule & Pricing</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Stay Date</label>
+                    <Input
+                      type="date"
+                      value={hourlyDate}
+                      onChange={(e) => setHourlyDate(e.target.value)}
+                      className="text-xs h-8.5 bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Start Time</label>
+                    <Input
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      className="text-xs h-8.5 bg-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Dynamic Hourly Rate & Duration Input */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Duration (Hours) *</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={72}
+                      value={durationHours}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        setDurationHours(isNaN(val) || val < 1 ? 1 : val);
+                        setCustomTotalAmount(null);
+                      }}
+                      className="text-xs h-8.5 font-mono font-bold text-slate-900 bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700">Hourly Rate (PKR) *</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={effectiveHourlyRate}
+                      onChange={(e) => {
+                        setCustomHourlyRate(parseFloat(e.target.value) || 0);
+                        setCustomTotalAmount(null);
+                      }}
+                      placeholder="e.g. 1000"
+                      className="text-xs font-mono font-bold text-slate-900 h-8.5 bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Calculated Check-Out:</span>
+                  <span className="font-bold text-indigo-900 font-mono">{calculatedEndTime}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Live Summary Badge */}
+            <div className="rounded-2xl bg-indigo-50/90 border border-indigo-200/80 p-3.5 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-indigo-600" />
+                  Live Booking Summary
+                </div>
+                <div className="text-xs font-semibold text-indigo-950 flex items-center gap-1.5">
+                  {bookingMode === 'NIGHTLY' ? (
+                    <>
+                      <Calendar className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                      <span>{formatDate(checkInDate)} – {formatDate(checkOutDate)} ({totalNights} Night{totalNights > 1 ? 's' : ''})</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                      <span>{formatDate(hourlyDate)}, {startTime} – {calculatedEndTime} ({durationHours} Hours)</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-[10px] text-indigo-700 font-medium">Computed Total</div>
+                <div className="text-sm font-black text-indigo-900 font-mono">
+                  {formatPKR(finalTotalAmount)}
                 </div>
               </div>
             </div>
 
-            {/* Tax Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Tax Rate (%)</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Manual Input</span>
-                </label>
-                <div className="flex items-center gap-1.5">
+            {/* Financials & Billing Section */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 space-y-3">
+              <div className="text-[11px] font-bold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                <Calculator className="h-3.5 w-3.5 text-indigo-600" />
+                <span>Billing, Discounts & Advance Payment</span>
+              </div>
+
+              {/* Discounts & Manager Referrals Section */}
+              <div className="p-3 rounded-2xl bg-white border border-slate-200/90 space-y-3">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-indigo-900">
+                    <Tag className="h-3.5 w-3.5 text-indigo-600" /> Discounts & Referrals
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">Optional</span>
+                </div>
+
+                {/* Discount (PKR) Input */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold text-slate-700">
+                      Discount Amount (PKR)
+                    </label>
+                    {discountValue > subtotalAmount && (
+                      <span className="text-[10px] text-rose-600 font-semibold">
+                        Cannot exceed Gross Room Total ({formatPKR(subtotalAmount)})
+                      </span>
+                    )}
+                  </div>
                   <Input
                     type="number"
-                    step="0.1"
                     min="0"
-                    max="100"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
-                    placeholder="e.g. 15"
-                    className="text-xs font-mono font-bold text-slate-900 h-8.5 bg-white"
+                    max={subtotalAmount}
+                    value={discountValue || ''}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setDiscountValue(val);
+                      setCustomTotalAmount(null);
+                    }}
+                    placeholder="e.g. 500"
+                    className={cn(
+                      "text-xs font-mono h-8.5 bg-slate-50/50",
+                      discountValue > subtotalAmount ? "border-rose-400 focus:ring-rose-500 bg-rose-50/50" : ""
+                    )}
                   />
-                  <div className="flex items-center gap-1">
-                    {[0, 5, 15, 16].map((rate) => (
+                </div>
+
+                {/* Dynamic Breakdown when Discount is applied */}
+                {discountAmount > 0 && discountAmount <= subtotalAmount && (
+                  <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-[11px] flex items-center justify-between font-medium text-indigo-950">
+                    <span>Gross Total: {formatPKR(subtotalAmount)} − Discount: {formatPKR(discountAmount)}</span>
+                    <span className="font-bold font-mono text-indigo-900">Net Total: {formatPKR(netSubtotal)}</span>
+                  </div>
+                )}
+
+                {/* Manager Commission / Referral Selection */}
+                <div className="pt-1 border-t border-slate-100">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-slate-700 flex items-center gap-1">
+                      <Users className="h-3 w-3 text-indigo-600" /> Referred By / Commission Agent
+                    </label>
+                    <select
+                      value={selectedCommissionRecipientId}
+                      onChange={(e) => setSelectedCommissionRecipientId(e.target.value)}
+                      className="w-full h-8.5 rounded-md border border-slate-200 bg-slate-50/50 px-2.5 text-xs text-slate-900 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="">Select Responsible Manager / Agent</option>
+                      {staffMembers.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.position || 'Staff'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total & Advance Payment */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                    <span>Grand Total (PKR) *</span>
+                    <span className="text-[10px] text-slate-400 font-normal">(Editable)</span>
+                  </label>
+                  <Input
+                    type="number"
+                    value={finalTotalAmount}
+                    onChange={(e) => setCustomTotalAmount(parseFloat(e.target.value) || 0)}
+                    className="text-xs font-mono font-bold text-slate-900 h-9 bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Advance Received (PKR)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={initialPayment}
+                    onChange={(e) => setInitialPayment(parseFloat(e.target.value) || 0)}
+                    placeholder="0"
+                    className="text-xs font-mono h-9 bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Method selector if advance payment > 0 */}
+              {initialPayment > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <CreditCard className="h-3.5 w-3.5 text-indigo-600" /> Advance Payment Method
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
                       <button
-                        key={rate}
                         type="button"
-                        onClick={() => setTaxRate(rate)}
+                        onClick={() => setPaymentMethod('cash')}
                         className={cn(
-                          'px-1.5 py-1 rounded text-[10px] font-semibold transition-all cursor-pointer',
-                          taxRate === rate
-                            ? 'bg-indigo-900 text-white shadow-2xs'
-                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                          'py-1.5 px-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center',
+                          paymentMethod === 'cash'
+                            ? 'bg-indigo-900 text-white border-indigo-900 shadow-2xs font-bold'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                         )}
                       >
-                        {rate}%
+                        Cash
                       </button>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={cn(
+                          'py-1.5 px-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center',
+                          paymentMethod === 'card'
+                            ? 'bg-indigo-900 text-white border-indigo-900 shadow-2xs font-bold'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        )}
+                      >
+                        Card
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('bank_transfer')}
+                        className={cn(
+                          'py-1.5 px-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer text-center',
+                          paymentMethod === 'bank_transfer'
+                            ? 'bg-indigo-900 text-white border-indigo-900 shadow-2xs font-bold'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        )}
+                      >
+                        Bank Transfer
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-700">Deposit To Account</label>
+                    <select
+                      value={paymentAccountId}
+                      onChange={(e) => setPaymentAccountId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                      {paymentAccounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-700">Calculated Tax Amount</label>
-                <div className="h-8.5 px-3 rounded-md bg-white border border-slate-200 flex items-center font-mono font-semibold text-slate-800 text-xs">
-                  +{formatPKR(taxAmount)} ({taxRate}%)
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-200/80 grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
-                  <span>Grand Total (PKR) *</span>
-                  <span className="text-[10px] text-slate-400 font-normal">(Editable)</span>
-                </label>
-                <Input
-                  type="number"
-                  value={finalTotalAmount}
-                  onChange={(e) => setCustomTotalAmount(parseFloat(e.target.value) || 0)}
-                  className="text-xs font-mono font-bold text-slate-900 h-9 bg-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700">Advance / Deposit Paid</label>
-                <Input
-                  type="number"
-                  value={initialPayment}
-                  onChange={(e) => setInitialPayment(parseFloat(e.target.value) || 0)}
-                  className="text-xs font-mono h-9 bg-white"
-                />
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 text-xs mt-2">
+                <span className="font-semibold text-slate-700">Remaining Balance Due:</span>
+                <span className={cn('font-mono font-bold text-sm', remainingBalance > 0 ? 'text-rose-600' : 'text-emerald-700')}>
+                  {formatPKR(remainingBalance)}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 text-xs text-slate-600">
-              <span>Base Subtotal: <strong className="text-slate-900 font-mono">{formatPKR(subtotalAmount)}</strong></span>
-              {discountAmount > 0 && <span>Discount: <strong className="text-emerald-700 font-mono">-{formatPKR(discountAmount)}</strong></span>}
-              {taxAmount > 0 && <span>Tax ({taxRate}%): <strong className="text-slate-900 font-mono">+{formatPKR(taxAmount)}</strong></span>}
+            {/* Notes */}
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Notes / Special Requests (Optional)</label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Late arrival, ground floor requested"
+                className="text-xs h-9 bg-white"
+              />
             </div>
-          </div>
+          </form>
+        </div>
 
-          <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-            <span className="font-semibold text-slate-700">Remaining Due Balance:</span>
-            <span className={cn('font-mono font-bold text-sm', remainingBalance > 0 ? 'text-rose-600' : 'text-emerald-700')}>
-              {formatPKR(remainingBalance)}
-            </span>
-          </div>
+        {/* Modal Footer Actions: Dual Submission Actions */}
+        <div className="p-4 md:px-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-2.5 shrink-0">
+          <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-9 px-4 text-xs font-semibold cursor-pointer">
+            Cancel
+          </Button>
 
-          {/* Notes */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Reservation Notes / Special Instructions</label>
-            <Input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Late arrival, extra towel requested"
-              className="text-xs h-9"
-            />
-          </div>
+          {/* Action 1: Create Reservation (Status RESERVED) */}
+          <Button
+            type="button"
+            size="sm"
+            disabled={isSubmitting}
+            onClick={(e) => handleFormSubmit(e, false)}
+            className="h-9 px-4 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {isSubmitting && submittingAction === 'RESERVE' ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Reserving...</span>
+              </>
+            ) : (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                <span>Create Reservation</span>
+              </>
+            )}
+          </Button>
 
-          {/* Action buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-9 px-4 text-xs">
-              Cancel
-            </Button>
+          {/* Action 2: Instant Check-In (Status CHECKED_IN / OCCUPIED) */}
+          {canInstantCheckIn && (
             <Button
-              type="submit"
+              type="button"
               size="sm"
               disabled={isSubmitting}
-              className="h-9 px-5 text-xs bg-indigo-900 text-white hover:bg-indigo-950 font-semibold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              onClick={(e) => handleFormSubmit(e, true)}
+              className="h-9 px-4 text-xs bg-emerald-600 text-white hover:bg-emerald-700 font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
-              {isSubmitting ? (
+              {isSubmitting && submittingAction === 'CHECK_IN' ? (
                 <>
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Confirming Reservation...</span>
+                  <span>Checking in...</span>
                 </>
               ) : (
-                <span>Confirm Reservation</span>
+                <>
+                  <LogIn className="h-3.5 w-3.5" />
+                  <span>Instant Check-In</span>
+                </>
               )}
             </Button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

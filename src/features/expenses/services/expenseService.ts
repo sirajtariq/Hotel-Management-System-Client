@@ -4,25 +4,25 @@ import { Expense, AccountHead, CreateExpenseInput, CreateAccountHeadInput, Payme
 
 function normalizeExpense(e: any): Expense {
   const amt = parseFloat(e.amount || '0');
-  const headName = e.account_head_details?.name || e.category_details?.name || e.item_name || 'General Expense';
-  const payMethod: PaymentMethod = e.payment_method || 'CASH';
+  const headName = e.accountHeadDetails?.name || e.account_head_details?.name || e.categoryDetails?.name || e.category_details?.name || e.itemName || e.item_name || 'General Expense';
+  const payMethod: PaymentMethod = e.paymentMethod || e.payment_method || 'CASH';
 
   return {
     id: String(e.id),
     propertyId: String(e.property || e.propertyId || ''),
-    propertyName: e.property_name || e.propertyName || 'Hotel Property',
-    accountHeadId: e.account_head || e.account_head_details?.id,
+    propertyName: e.propertyName || e.property_name || 'Hotel Property',
+    accountHeadId: e.accountHead || e.account_head || e.accountHeadDetails?.id || e.account_head_details?.id,
     accountHeadName: headName,
-    title: e.item_name || headName,
+    title: e.itemName || e.item_name || headName,
     category: headName,
     amount: isNaN(amt) ? 0 : amt,
-    date: e.expense_date || e.date || new Date().toISOString().split('T')[0],
-    paidTo: e.vendor_name || e.vendor || e.paidTo || 'N/A',
+    date: e.expenseDate || e.expense_date || e.date || new Date().toISOString().split('T')[0],
+    paidTo: e.vendorName || e.vendor_name || e.vendor || e.paidTo || 'N/A',
     paymentMethod: payMethod,
-    receiptNumber: e.receipt_number || e.receiptNumber || (e.id ? `EXP-${String(e.id).padStart(3, '0')}` : undefined),
-    receiptImage: e.receipt_image || e.receiptImage,
+    receiptNumber: e.receiptNumber || e.receipt_number || (e.id ? `EXP-${String(e.id).padStart(3, '0')}` : undefined),
+    receiptImage: e.receiptImage || e.receipt_image,
     notes: e.description || e.notes || '',
-    createdBy: e.created_by_name || e.createdBy || 'Staff Member',
+    createdBy: e.createdByName || e.created_by_name || e.createdBy || 'Staff Member',
   };
 }
 
