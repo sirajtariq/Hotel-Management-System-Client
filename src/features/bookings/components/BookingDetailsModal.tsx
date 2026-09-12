@@ -118,6 +118,14 @@ export function BookingDetailsModal({ booking, isOpen, onClose }: BookingDetails
                 {formatPKR(booking.subtotal_amount || booking.subtotalAmount || booking.totalAmount)}
               </span>
             </div>
+            {(Number(booking.discount_amount || booking.discountAmount) || 0) > 0 && (
+              <div className="flex justify-between text-emerald-700 font-medium">
+                <span>Discount Applied:</span>
+                <span className="font-mono font-semibold">
+                  -{formatPKR(booking.discount_amount || booking.discountAmount || 0)}
+                </span>
+              </div>
+            )}
             {(Number(booking.tax_rate || booking.taxRate) || 0) > 0 && (
               <div className="flex justify-between text-slate-700">
                 <span>Tax ({booking.tax_rate || booking.taxRate}%):</span>
@@ -139,6 +147,29 @@ export function BookingDetailsModal({ booking, isOpen, onClose }: BookingDetails
               <span>Balance Due:</span>
               <span className="font-mono text-rose-600">{formatPKR(booking.remainingAmount)}</span>
             </div>
+
+            {/* Internal Commission / Referral Agent Metric */}
+            {(booking.commission_recipient_name || booking.commissionRecipientName || (Number(booking.commission_amount || booking.commissionAmount) || 0) > 0) && (
+              <div className="mt-2 pt-2 border-t border-indigo-200 text-[11px] space-y-1">
+                <span className="font-bold text-slate-500 uppercase tracking-wider block text-[10px]">
+                  Internal Commission & Referral Audit
+                </span>
+                <div className="flex justify-between text-slate-700">
+                  <span>Commission Recipient:</span>
+                  <span className="font-bold text-slate-900">
+                    {booking.commission_recipient_name || booking.commissionRecipientName || 'Assigned Staff'}
+                  </span>
+                </div>
+                {(Number(booking.commission_amount || booking.commissionAmount) || 0) > 0 && (
+                  <div className="flex justify-between text-slate-700">
+                    <span>Commission Payable:</span>
+                    <span className="font-mono font-bold text-indigo-900">
+                      {formatPKR(booking.commission_amount || booking.commissionAmount || 0)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Modal Footer */}

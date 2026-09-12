@@ -25,19 +25,23 @@ function normalizeBooking(b: any): Booking {
   const rawCheckOut = b.checkOutDate || b.check_out_date || (b.checkOut ? String(b.checkOut).split('T')[0] : (b.check_out ? String(b.check_out).split('T')[0] : ''));
 
   return {
+    ...b,
     id: String(b.id),
     bookingReference: ref,
     invoiceNumber: inv,
     tenantId: String(b.tenant || b.tenantId || ''),
     tenantName: b.tenantName || b.tenant_name || 'Pearl Suites & Hotel Management',
     propertyId: String(b.property || b.propertyId || ''),
-    propertyName: b.propertyName || b.property_name || 'Pearl Continental & Serviced Suites',
-    propertyAddress: b.propertyAddress || b.property_address || 'Block 4, Clifton, Club Road',
-    propertyCity: b.propertyCity || b.property_city || 'Karachi, Pakistan',
+    propertyName: b.propertyName || b.property_name || b.propertyData?.name || 'Pearl Continental & Serviced Suites',
+    propertyAddress: b.propertyAddress || b.property_address || b.propertyData?.address || 'Block 4, Clifton, Club Road',
+    propertyCity: b.propertyCity || b.property_city || b.propertyData?.city || 'Karachi, Pakistan',
+    propertyPhone: b.propertyPhone || b.property_phone || b.propertyData?.phone || '',
+    propertyEmail: b.propertyEmail || b.property_email || b.propertyData?.email || '',
     roomId: String(b.room || b.roomId || ''),
     roomNumber: roomNum.startsWith('Room ') ? roomNum : `Room ${roomNum}`,
     roomTypeName: roomTypeName,
     guest: {
+      ...b.guest,
       id: b.guest?.id || `gst_${b.id}`,
       fullName: guestName,
       email: guestEmail,
@@ -177,6 +181,8 @@ export const bookingService = {
         payment_account_id: accId,
         accountId: accId,
         account_id: accId,
+        extra_charge_name: input.extraChargeName,
+        extra_charge_amount: input.extraChargeAmount,
       });
       return normalizeBooking(response.data);
     } catch (err: any) {
@@ -193,6 +199,58 @@ export const bookingService = {
   async createBooking(input: CreateBookingInput): Promise<Booking> {
     try {
       const response = await apiClient.post<Booking>('/bookings/', input);
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async checkoutWithPayment(input: {
+    bookingId: string;
+    extraChargeName?: string;
+    extraChargeAmount?: number;
+    paymentAmount?: number;
+    paymentAccountId?: string;
+    paymentMethod?: string;
+  }): Promise<Booking> {
+    try {
+      const response = await apiClient.post<any>(`/bookings/${input.bookingId}/checkout-with-payment/`, {
+        extra_charge_name: input.extraChargeName,
+        extra_charge_amount: input.extraChargeAmount,
+        payment_amount: input.paymentAmount,
+        payment_account_id: input.paymentAccountId,
+        payment_method: input.paymentMethod,
+      });
+      if (response.data && response.data.status) {
+        return { id: String(input.bookingId), status: response.data.status.toLowerCase() } as any;
+      }
+      return normalizeBooking(response.data);
+    } catch (err: any) {
+      if (err.response?.data) {
+        const msg = typeof err.response.data === 'object'
+          ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(err.response.data);
+        throw new Error(msg);
+      }
+      throw err;
+    }
+  },
+
+  async addExtraCharge(input: { bookingId: string; name: string; amount: number }): Promise<Booking> {
+    try {
+      const response = await apiClient.post<any>(`/bookings/${input.bookingId}/add-extra-charge/`, {
+        name: input.name,
+        amount: input.amount
+      });
+      if (response.data && response.data.data) {
+        return normalizeBooking(response.data.data);
+      }
       return normalizeBooking(response.data);
     } catch (err: any) {
       if (err.response?.data) {

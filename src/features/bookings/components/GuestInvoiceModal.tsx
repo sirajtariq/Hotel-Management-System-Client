@@ -192,10 +192,13 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
   const totalRestaurantCharges = Number(booking.total_restaurant_charges || booking.totalRestaurantCharges) || 
     restaurantOrders.reduce((sum: number, o: any) => sum + (Number(o.grand_total || o.grandTotal) || 0), 0);
 
+  const extraCharges = booking.extra_charges || booking.extraCharges || [];
+  const totalExtraCharges = extraCharges.reduce((sum: number, c: any) => sum + (Number(c.amount) || 0), 0);
+
   const totalRefunded = Number(booking.total_refunded || booking.totalRefunded) || 0;
   const netPaid = Number((booking as any).paid_amount || booking.paidAmount) || 0;
   const totalPaid = Number((booking as any).gross_paid || (booking as any).grossPaid) || (netPaid + totalRefunded);
-  const roomStayCharges = Number((booking as any).room_stay_charges || (booking as any).roomStayCharges) || Math.max(0, totalAmount - totalRestaurantCharges);
+  const roomStayCharges = Number((booking as any).room_stay_charges || (booking as any).roomStayCharges) || Math.max(0, totalAmount - totalRestaurantCharges - totalExtraCharges);
   const totalFolioBill = totalAmount;
   const balanceDue = Number((booking as any).balance_due || (booking as any).balanceDue) || Math.max(0, totalFolioBill - netPaid);
 
@@ -354,6 +357,19 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                           {formatPKR(subtotal)}
                         </td>
                       </tr>
+                      {extraCharges.map((charge: any, idx: number) => (
+                        <tr key={`extra-${idx}`}>
+                          <td className="py-3">
+                            <div className="font-bold text-slate-900">{charge.name}</div>
+                            <div className="text-[11px] text-slate-500">Extra Charge / Service</div>
+                          </td>
+                          <td className="py-3 text-center font-mono font-medium">-</td>
+                          <td className="py-3 text-right font-mono tabular-nums">-</td>
+                          <td className="py-3 text-right font-mono font-bold tabular-nums text-slate-900">
+                            {formatPKR(Number(charge.amount) || 0)}
+                          </td>
+                        </tr>
+                      ))}
                       {discountAmount > 0 && (
                         <tr className="text-emerald-700">
                           <td className="py-2 font-medium">Special Promotional Discount</td>
@@ -423,6 +439,12 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                       <div className="flex justify-between text-indigo-900 font-medium">
                         <span>Restaurant POS Charges:</span>
                         <span className="font-mono font-bold tabular-nums">+{formatPKR(totalRestaurantCharges)}</span>
+                      </div>
+                    )}
+                    {totalExtraCharges > 0 && (
+                      <div className="flex justify-between text-indigo-900 font-medium">
+                        <span>Other Extra Charges:</span>
+                        <span className="font-mono font-bold tabular-nums">+{formatPKR(totalExtraCharges)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-1">
@@ -502,7 +524,7 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                 <div className="space-y-1 text-[11px]">
                   <div className="flex justify-between font-bold">
                     <span>ROOM STAY ({booking.totalNights}N):</span>
-                    <span>{formatPKR(totalAmount - totalRestaurantCharges)}</span>
+                    <span>{formatPKR(roomStayCharges)}</span>
                   </div>
                   {totalRestaurantCharges > 0 && (
                     <div className="flex justify-between text-[10px]">
@@ -516,6 +538,22 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
                         <div key={ord.id} className="flex justify-between">
                           <span>{ord.order_number || ord.orderNumber}:</span>
                           <span>{formatPKR(ord.grand_total || ord.grandTotal || 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {totalExtraCharges > 0 && (
+                    <div className="flex justify-between text-[10px]">
+                      <span>EXTRA CHARGES:</span>
+                      <span>+{formatPKR(totalExtraCharges)}</span>
+                    </div>
+                  )}
+                  {extraCharges.length > 0 && (
+                    <div className="text-[9px] text-slate-600 pl-2 space-y-0.5 border-l border-slate-300">
+                      {extraCharges.map((charge: any, idx: number) => (
+                        <div key={`ther-ex-${idx}`} className="flex justify-between">
+                          <span>{charge.name}:</span>
+                          <span>{formatPKR(Number(charge.amount) || 0)}</span>
                         </div>
                       ))}
                     </div>
