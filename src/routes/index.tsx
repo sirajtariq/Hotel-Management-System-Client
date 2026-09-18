@@ -27,8 +27,24 @@ const SystemUsersPage = lazy(() => import('@/features/users/pages/SystemUsersPag
 const ProfilePage = lazy(() => import('@/features/profile/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 import { usePermission } from '@/hooks/usePermission';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+
 function RootRedirect() {
+  const { user, is_impersonated } = useAuth();
   const { hasPermission } = usePermission();
+
+  const roleUpper = String(user?.role || '').toUpperCase();
+  const isSuperAdmin = Boolean(
+    user?.is_superuser ||
+    (user as any)?.isSuperuser ||
+    roleUpper === 'SUPERADMIN' ||
+    roleUpper === 'SUPER_ADMIN'
+  );
+
+  if (isSuperAdmin && !is_impersonated) {
+    return <Navigate to="/tenants" replace />;
+  }
+
   if (hasPermission('dashboard:view')) return <Navigate to="/dashboard" replace />;
   if (hasPermission('bookings:view')) return <Navigate to="/bookings" replace />;
   if (hasPermission('restaurant:pos')) return <Navigate to="/restaurant/pos" replace />;

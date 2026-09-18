@@ -5,14 +5,26 @@ import { LoginForm } from '../components/LoginForm';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, is_impersonated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+    if (isAuthenticated && user) {
+      const roleUpper = String(user.role || '').toUpperCase();
+      const isSuperAdmin = Boolean(
+        user.is_superuser ||
+        (user as any).isSuperuser ||
+        roleUpper === 'SUPERADMIN' ||
+        roleUpper === 'SUPER_ADMIN'
+      );
+
+      if (isSuperAdmin && !is_impersonated) {
+        navigate('/tenants', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, is_impersonated, navigate]);
 
   return (
     <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4">
@@ -24,7 +36,6 @@ export function LoginPage() {
 
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Hotel & Serviced Apartments Portal</h1>
           <p className="text-xs text-slate-500 mt-1">Multi-Tenant Hotel Operations & Management System</p>
-
         </div>
 
         <LoginForm />

@@ -168,6 +168,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (backup.activeTenantId) {
           localStorage.setItem('active_tenant_id', backup.activeTenantId);
+        } else {
+          localStorage.removeItem('active_tenant_id');
         }
         setUser(backup.user);
         setIsImpersonated(false);
@@ -178,6 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Fallback clear
       }
     }
+    localStorage.removeItem('active_tenant_id');
     logout();
     window.location.href = '/login';
   };

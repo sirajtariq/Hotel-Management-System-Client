@@ -10,8 +10,9 @@ export const checkPermission = (user: UserSession | User | null, permissionCode:
   if (
     roleUpper === 'SUPERADMIN' ||
     roleUpper === 'SUPER_ADMIN' ||
-    (user as any).isSuperuser ||
-    (user as any).is_superuser ||
+    roleUpper === 'TENANT_ADMIN' ||
+    Boolean((user as any).isSuperuser || (user as any).is_superuser) ||
+    Boolean((user as any).is_impersonated) ||
     (Array.isArray(user.permissions) && user.permissions.includes('*'))
   ) {
     return true;

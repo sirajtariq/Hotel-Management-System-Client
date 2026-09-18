@@ -36,12 +36,32 @@ export function LoginForm() {
   });
 
   const onSubmit = async (data: LoginSchema) => {
-
     try {
       await login(data.email, data.password);
       setError(null);
       toast.success('Welcome Back!', 'Authentication successful. Loading workspace...');
-      navigate('/dashboard', { replace: true });
+
+      const sessionUserStr = localStorage.getItem('user_session');
+      let isSuperAdmin = false;
+
+      if (sessionUserStr) {
+        try {
+          const sessionUser = JSON.parse(sessionUserStr);
+          const roleUpper = String(sessionUser.role || '').toUpperCase();
+          isSuperAdmin = Boolean(
+            sessionUser.is_superuser ||
+            sessionUser.isSuperuser ||
+            roleUpper === 'SUPERADMIN' ||
+            roleUpper === 'SUPER_ADMIN'
+          ) && !sessionUser.is_impersonated;
+        } catch {}
+      }
+
+      if (isSuperAdmin) {
+        navigate('/tenants', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err: any) {
       const msg = typeof err?.message === 'string' ? err.message : 'Invalid email or password credentials';
       setError(msg);
