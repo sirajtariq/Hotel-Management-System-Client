@@ -24,27 +24,27 @@ export function PnLReportTab({ data }: PnLReportTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gross Income</span>
-          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans">{formatPKR(data.grossRevenue ?? data.gross_revenue ?? 0)}</div>
+          <div className="text-2xl font-bold text-slate-900 mt-1 font-sans">{formatPKR(data?.grossRevenue ?? data?.gross_revenue ?? 0)}</div>
           <div className="text-[11px] text-slate-500 mt-1">Rooms + Restaurant Sales</div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total OPEX & Payroll</span>
-          <div className="text-2xl font-bold text-rose-900 mt-1 font-sans">{formatPKR(data.totalExpenses ?? data.total_expenses ?? 0)}</div>
+          <div className="text-2xl font-bold text-rose-900 mt-1 font-sans">{formatPKR(data?.totalExpenses ?? data?.total_expenses ?? 0)}</div>
           <div className="text-[11px] text-slate-500 mt-1">Expenses + Staff Salaries + Rent</div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Net Operating Profit</span>
-          <div className={`text-2xl font-bold mt-1 font-sans ${(data.netProfit ?? data.net_profit ?? 0) >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
-            {formatPKR(data.netProfit ?? data.net_profit ?? 0)}
+          <div className={`text-2xl font-bold mt-1 font-sans ${(data?.netProfit ?? data?.net_profit ?? 0) >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
+            {formatPKR(data?.netProfit ?? data?.net_profit ?? 0)}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">Bottom-line income</div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Profit Margin</span>
-          <div className="text-2xl font-bold text-indigo-900 mt-1 font-sans">{data.profitMargin ?? data.profit_margin ?? 0}%</div>
+          <div className="text-2xl font-bold text-indigo-900 mt-1 font-sans">{data?.profitMargin ?? data?.profit_margin ?? 0}%</div>
           <div className="text-[11px] text-slate-500 mt-1">Net Margin Yield</div>
         </div>
       </div>
@@ -63,7 +63,7 @@ export function PnLReportTab({ data }: PnLReportTabProps) {
 
         <div className="h-[300px] w-full pt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data.chartData ?? data.chart_data ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+            <AreaChart data={data?.chartData ?? data?.chart_data ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="pnlRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -120,8 +120,8 @@ export function PnLReportTab({ data }: PnLReportTabProps) {
               ))}
               <tr className="bg-slate-100/80 font-bold border-t-2 border-slate-300">
                 <td className="p-3 text-slate-900" colSpan={2}>Net Operating Profit</td>
-                <td className={`p-3 text-right font-mono text-sm ${(data.netProfit ?? data.net_profit ?? 0) >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
-                  {formatPKR(data.netProfit ?? data.net_profit ?? 0)}
+                <td className={`p-3 text-right font-mono text-sm ${(data?.netProfit ?? data?.net_profit ?? 0) >= 0 ? 'text-emerald-900' : 'text-rose-900'}`}>
+                  {formatPKR(data?.netProfit ?? data?.net_profit ?? 0)}
                 </td>
               </tr>
             </tbody>
