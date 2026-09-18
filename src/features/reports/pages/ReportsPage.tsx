@@ -15,6 +15,7 @@ import { ExpenseAnalyticsTab } from '../components/tabs/ExpenseAnalyticsTab';
 import { HospitalityKpiTab } from '../components/tabs/HospitalityKpiTab';
 import { RestaurantReportTab } from '../components/tabs/RestaurantReportTab';
 import { ReceivablesTaxTab } from '../components/tabs/ReceivablesTaxTab';
+import { StaffCommissionTab } from '../components/tabs/StaffCommissionTab';
 import { PrintableFinancialReport } from '../components/print/PrintableFinancialReport';
 
 import {
@@ -25,6 +26,7 @@ import {
   UtensilsCrossed,
   CreditCard,
   Loader2,
+  Users,
 } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 import { cn } from '@/lib/utils';
@@ -108,6 +110,7 @@ export function ReportsPage() {
             { id: 'hospitality', label: 'Hospitality KPIs', icon: Activity },
             { id: 'restaurant', label: 'Restaurant & F&B', icon: UtensilsCrossed },
             { id: 'receivables', label: 'Tax & Receivables', icon: CreditCard },
+            { id: 'staff_commissions', label: 'Staff & Commission', icon: Users },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -139,8 +142,9 @@ export function ReportsPage() {
             {activeTab === 'revenue' && <RevenueAnalyticsTab data={data as any} />}
             {activeTab === 'expenses' && <ExpenseAnalyticsTab data={data as any} />}
             {activeTab === 'hospitality' && <HospitalityKpiTab data={data as any} />}
-            {activeTab === 'restaurant' && <RestaurantReportTab data={data as any} />}
-            {activeTab === 'receivables' && <ReceivablesTaxTab data={data as any} onRefresh={refetch} />}
+            { activeTab === 'restaurant' && <RestaurantReportTab data={data as any} /> }
+            { activeTab === 'receivables' && <ReceivablesTaxTab data={data as any} onRefresh={refetch} /> }
+            { activeTab === 'staff_commissions' && <StaffCommissionTab data={data as any} /> }
           </div>
 
         ) : null}

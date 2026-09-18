@@ -9,6 +9,8 @@ import {
   HospitalityKpiReportData,
   RestaurantReportData,
   ReceivablesReportData,
+  StaffCommissionReportData,
+  StaffBookingHistoryItem,
 } from '@/types/reports';
 
 export interface ReportQueryParams {
@@ -55,6 +57,16 @@ export const reportService = {
   async getReceivablesReport(params?: ReportQueryParams): Promise<ReceivablesReportData> {
     const response = await apiClient.get('/reports/financial/receivables/', { params });
     return extractReportData<ReceivablesReportData>(response.data);
+  },
+
+  async getStaffCommissionReport(params?: ReportQueryParams): Promise<StaffCommissionReportData> {
+    const response = await apiClient.get('/reports/financial/staff-commissions/', { params });
+    return extractReportData<StaffCommissionReportData>(response.data);
+  },
+
+  async getStaffBookingsHistory(params: { user_id: number; role_type: 'agent' | 'operator'; period?: string; property_id?: string; start_date?: string; end_date?: string }): Promise<StaffBookingHistoryItem[]> {
+    const response = await apiClient.get('/reports/financial/staff-bookings/', { params });
+    return extractReportData<StaffBookingHistoryItem[]>(response.data);
   },
 
   async exportFinancialSuiteCSV(params: ReportQueryParams): Promise<void> {

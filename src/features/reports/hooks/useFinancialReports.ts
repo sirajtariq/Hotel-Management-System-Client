@@ -20,10 +20,11 @@ export function useFinancialReports(activeTab: FinancialReportType, params: Repo
           return reportService.getRestaurantReport(params);
         case 'receivables':
           return reportService.getReceivablesReport(params);
+        case 'staff_commissions':
+          return reportService.getStaffCommissionReport(params);
         default:
           return reportService.getPnLReport(params);
       }
     },
-    staleTime: 60000, // 1 min cache
   });
 }

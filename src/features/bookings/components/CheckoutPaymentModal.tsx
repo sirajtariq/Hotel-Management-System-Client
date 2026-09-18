@@ -14,17 +14,18 @@ interface CheckoutPaymentModalProps {
   onClose: () => void;
   onSubmit: (input: {
     bookingId: string;
-    extraChargeName?: string;
-    extraChargeAmount?: number;
+    extraCharges?: { name: string; amount: number }[];
     paymentAmount?: number;
     paymentAccountId?: string;
     paymentMethod?: string;
   }) => Promise<void>;
+  onShowFolio?: (tempExtraCharges: { name: string; amount: number }[]) => void;
 }
 
-export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: CheckoutPaymentModalProps) {
-  const [extraChargeName, setExtraChargeName] = useState('');
-  const [extraChargeAmount, setExtraChargeAmount] = useState<number>(0);
+export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit, onShowFolio }: CheckoutPaymentModalProps) {
+  const [extraCharges, setExtraCharges] = useState<{name: string; amount: number}[]>([]);
+  const [currentExtraChargeName, setCurrentExtraChargeName] = useState('');
+  const [currentExtraChargeAmount, setCurrentExtraChargeAmount] = useState<number | ''>('');
 
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [method, setMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
@@ -35,8 +36,9 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: Che
   useEffect(() => {
     if (isOpen && booking) {
       setPaymentAmount(booking.remainingAmount || 0);
-      setExtraChargeName('');
-      setExtraChargeAmount(0);
+      setExtraCharges([]);
+      setCurrentExtraChargeName('');
+      setCurrentExtraChargeAmount('');
       accountService.getPaymentAccounts().then((accs) => {
         const active = accs.filter((a) => a.is_active);
         setPaymentAccounts(active);
@@ -50,9 +52,22 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: Che
   // Update payment amount when extra charge changes
   useEffect(() => {
     if (booking) {
-      setPaymentAmount((booking.remainingAmount || 0) + (extraChargeAmount || 0));
+      const totalExtras = extraCharges.reduce((sum, charge) => sum + charge.amount, 0);
+      setPaymentAmount((booking.remainingAmount || 0) + totalExtras);
     }
-  }, [extraChargeAmount, booking]);
+  }, [extraCharges, booking]);
+
+  const handleAddExtraCharge = () => {
+    if (currentExtraChargeName.trim() && currentExtraChargeAmount && currentExtraChargeAmount > 0) {
+      setExtraCharges([...extraCharges, { name: currentExtraChargeName.trim(), amount: Number(currentExtraChargeAmount) }]);
+      setCurrentExtraChargeName('');
+      setCurrentExtraChargeAmount('');
+    }
+  };
+
+  const removeExtraCharge = (index: number) => {
+    setExtraCharges(extraCharges.filter((_, i) => i !== index));
+  };
 
   if (!booking) return null;
 
@@ -62,8 +77,7 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: Che
     try {
       await onSubmit({
         bookingId: booking.id,
-        extraChargeName: extraChargeName || undefined,
-        extraChargeAmount: extraChargeAmount > 0 ? extraChargeAmount : undefined,
+        extraCharges: extraCharges.length > 0 ? extraCharges : undefined,
         paymentAmount: Number(paymentAmount),
         paymentMethod: method,
         paymentAccountId: selectedAccountId ? String(selectedAccountId) : undefined,
@@ -102,31 +116,60 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: Che
             </div>
           </div>
 
-          {/* Extra Charges Section */}
           <div className="p-3 rounded-xl border border-indigo-100 bg-indigo-50/50 space-y-3">
             <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider">Add Extra Charge (Optional)</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
+            <div className="flex gap-2 items-end">
+              <div className="space-y-1 flex-1">
                 <label className="text-[11px] font-semibold text-slate-600">Charge Name (e.g. Laundry)</label>
                 <Input
                   type="text"
-                  placeholder="Leave empty if none"
-                  value={extraChargeName}
-                  onChange={(e) => setExtraChargeName(e.target.value)}
+                  placeholder="Enter name"
+                  value={currentExtraChargeName}
+                  onChange={(e) => setCurrentExtraChargeName(e.target.value)}
                   className="text-xs h-8"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 w-28">
                 <label className="text-[11px] font-semibold text-slate-600">Amount (PKR)</label>
                 <Input
                   type="number"
                   min="0"
-                  value={extraChargeAmount || ''}
-                  onChange={(e) => setExtraChargeAmount(Number(e.target.value))}
+                  value={currentExtraChargeAmount}
+                  onChange={(e) => setCurrentExtraChargeAmount(e.target.value ? Number(e.target.value) : '')}
                   className="text-xs h-8 font-mono"
                 />
               </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                className="h-8 text-xs px-3"
+                onClick={handleAddExtraCharge}
+                disabled={!currentExtraChargeName.trim() || !currentExtraChargeAmount}
+              >
+                Add
+              </Button>
             </div>
+            
+            {extraCharges.length > 0 && (
+              <div className="space-y-1.5 pt-2 border-t border-indigo-100/50">
+                {extraCharges.map((charge, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-white p-2 rounded-md border border-indigo-50 text-xs">
+                    <span className="font-medium text-slate-700">{charge.name}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-slate-900">{formatPKR(charge.amount)}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => removeExtraCharge(idx)}
+                        className="text-rose-500 hover:text-rose-700 font-bold"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Payment Details Section */}
@@ -134,7 +177,7 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: Che
             <div className="flex justify-between items-center bg-slate-100 p-2 rounded-lg border border-slate-200">
               <span className="text-xs font-bold text-slate-700">Total To Collect:</span>
               <span className="text-sm font-black text-rose-700 font-mono">
-                {formatPKR((booking.remainingAmount || 0) + (extraChargeAmount || 0))}
+                {formatPKR((booking.remainingAmount || 0) + extraCharges.reduce((sum, c) => sum + c.amount, 0))}
               </span>
             </div>
 
@@ -177,13 +220,20 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit }: Che
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-            <Button type="button" variant="outline" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" size="sm" disabled={isSubmitting || paymentAmount < 0}>
-              {isSubmitting ? 'Processing...' : 'Collect & Check-Out'}
-            </Button>
+          <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+            {onShowFolio ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => onShowFolio(extraCharges)} className="text-indigo-600 border-indigo-200 hover:bg-indigo-50">
+                Print Bill (Show Folio)
+              </Button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmitting || paymentAmount < 0}>
+                {isSubmitting ? 'Processing...' : 'Collect & Check-Out'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

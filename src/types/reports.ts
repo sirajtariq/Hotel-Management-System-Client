@@ -14,7 +14,8 @@ export type FinancialReportType =
   | 'expenses'
   | 'hospitality'
   | 'restaurant'
-  | 'receivables';
+  | 'receivables'
+  | 'staff_commissions';
 
 // Tab 1: P&L Report Data
 export interface PnLLedgerItem {
@@ -264,6 +265,68 @@ export interface ReceivablesReportData {
   totalPendingBalance?: number;
   aging_receivables?: AgingReceivableItem[];
   agingReceivables?: AgingReceivableItem[];
+}
+
+// Tab 7: Staff & Commission Report Data
+export interface OperatorsSummaryItem {
+  user_id: number;
+  userId?: number;
+  user_name: string;
+  userName?: string;
+  role: string;
+  total_entries_count: number;
+  totalEntriesCount?: number;
+  total_revenue_entered: number;
+  totalRevenueEntered?: number;
+}
+
+export interface AgentsSummaryItem {
+  agent_id: number;
+  agentId?: number;
+  agent_name: string;
+  agentName?: string;
+  role: string;
+  referred_bookings_count: number;
+  referredBookingsCount?: number;
+  total_referred_revenue: number;
+  totalReferredRevenue?: number;
+  commission_earned: number;
+  commissionEarned?: number;
+}
+
+export interface StaffBookingHistoryItem {
+  id: number;
+  booking_reference: string;
+  bookingReference?: string;
+  check_in_date: string;
+  checkInDate?: string;
+  guest_name: string;
+  guestName?: string;
+  room_number: string;
+  roomNumber?: string;
+  total_amount: number;
+  totalAmount?: number;
+  status: string;
+}
+
+export interface StaffCommissionReportData {
+  period: FinancialPeriodFilter;
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  total_bookings_created?: number;
+  totalBookingsCreated?: number;
+  commission_eligible_bookings?: number;
+  commissionEligibleBookings?: number;
+  total_revenue_handled?: number;
+  totalRevenueHandled?: number;
+  total_commission_payable?: number;
+  totalCommissionPayable?: number;
+  operators_summary: OperatorsSummaryItem[];
+  operatorsSummary?: OperatorsSummaryItem[];
+  agents_summary: AgentsSummaryItem[];
+  agentsSummary?: AgentsSummaryItem[];
 }
 
 // Backward Compatibility Types for legacy report components

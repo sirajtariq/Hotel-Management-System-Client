@@ -111,6 +111,10 @@ export function BookingsPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       await fetchRooms();
       toast.success('Status Updated', `Booking changed to ${String(status).toUpperCase().replace('_', ' ')}`);
+      
+      if (status === 'checked_out' && updated) {
+        setInvoiceBooking(updated);
+      }
     } catch (err: any) {
       toast.error('Update Failed', err?.message || 'Could not update booking status.');
     } finally {
@@ -188,6 +192,9 @@ export function BookingsPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
       await fetchRooms();
       toast.success('Checkout Successful', 'Guest checked out and payment settled.');
+      if (updated && updated.id) {
+        setInvoiceBooking(updated);
+      }
     } catch (err: any) {
       toast.error('Checkout Failed', err?.message || 'Could not process checkout with payment.');
     }
@@ -348,6 +355,17 @@ export function BookingsPage() {
           isOpen={!!checkoutWithPaymentBooking}
           onClose={() => setCheckoutWithPaymentBooking(null)}
           onSubmit={handleCheckoutWithPayment}
+          onShowFolio={(tempExtraCharges) => {
+            if (!checkoutWithPaymentBooking) return;
+            const tempBooking = { ...checkoutWithPaymentBooking };
+            if (tempExtraCharges && tempExtraCharges.length > 0) {
+              tempBooking.extra_charges = [
+                ...(tempBooking.extra_charges || tempBooking.extraCharges || []),
+                ...tempExtraCharges
+              ];
+            }
+            setInvoiceBooking(tempBooking);
+          }}
         />
 
         <AddExtraChargeModal

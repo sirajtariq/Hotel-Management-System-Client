@@ -12,7 +12,7 @@ interface GuestInvoiceModalProps {
 }
 
 export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModalProps) {
-  const [printMode, setPrintMode] = useState<'a4' | 'thermal'>('a4');
+  const [printMode, setPrintMode] = useState<'a4' | 'thermal'>('thermal');
 
   if (!booking) return null;
 
@@ -223,18 +223,6 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
             <div className="bg-slate-800 p-1 rounded-lg flex items-center gap-1 border border-slate-700">
               <button
                 type="button"
-                onClick={() => setPrintMode('a4')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                  printMode === 'a4'
-                    ? 'bg-indigo-600 text-white font-semibold shadow-sm'
-                    : 'text-slate-300 hover:text-white'
-                }`}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                <span>Executive A4</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setPrintMode('thermal')}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
                   printMode === 'thermal'
@@ -244,6 +232,18 @@ export function GuestInvoiceModal({ booking, isOpen, onClose }: GuestInvoiceModa
               >
                 <Receipt className="h-3.5 w-3.5" />
                 <span>80mm Thermal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrintMode('a4')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  printMode === 'a4'
+                    ? 'bg-indigo-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Executive A4</span>
               </button>
             </div>
 

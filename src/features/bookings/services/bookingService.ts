@@ -213,20 +213,21 @@ export const bookingService = {
 
   async checkoutWithPayment(input: {
     bookingId: string;
-    extraChargeName?: string;
-    extraChargeAmount?: number;
+    extraCharges?: { name: string; amount: number }[];
     paymentAmount?: number;
     paymentAccountId?: string;
     paymentMethod?: string;
   }): Promise<Booking> {
     try {
       const response = await apiClient.post<any>(`/bookings/${input.bookingId}/checkout-with-payment/`, {
-        extra_charge_name: input.extraChargeName,
-        extra_charge_amount: input.extraChargeAmount,
+        extra_charges: input.extraCharges,
         payment_amount: input.paymentAmount,
         payment_account_id: input.paymentAccountId,
         payment_method: input.paymentMethod,
       });
+      if (response.data && response.data.data) {
+        return normalizeBooking(response.data.data);
+      }
       if (response.data && response.data.status) {
         return { id: String(input.bookingId), status: response.data.status.toLowerCase() } as any;
       }
