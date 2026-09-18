@@ -39,8 +39,8 @@ export function ExpenseAnalyticsTab({ data }: ExpenseAnalyticsTabProps) {
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={data.categories_breakdown} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={90}>
-                  {data.categories_breakdown.map((_, index) => (
+                <Pie data={data.categoriesBreakdown ?? data.categories_breakdown ?? []} dataKey="amount" nameKey="category" cx="50%" cy="50%" outerRadius={90}>
+                  {(data.categoriesBreakdown ?? data.categories_breakdown ?? []).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -63,7 +63,7 @@ export function ExpenseAnalyticsTab({ data }: ExpenseAnalyticsTabProps) {
 
           <div className="h-[280px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.daily_outflow} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <AreaChart data={data.dailyOutflow ?? data.daily_outflow ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="expOutflow" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
@@ -102,16 +102,16 @@ export function ExpenseAnalyticsTab({ data }: ExpenseAnalyticsTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {data.top_transactions.map((tx) => (
+              {(data.topTransactions ?? data.top_transactions ?? []).map((tx) => (
                 <tr key={tx.id} className="hover:bg-slate-50/50">
-                  <td className="p-3 font-semibold text-slate-900">{tx.item_name}</td>
-                  <td className="p-3 text-slate-600">{tx.vendor_name}</td>
+                  <td className="p-3 font-semibold text-slate-900">{tx.itemName ?? tx.item_name}</td>
+                  <td className="p-3 text-slate-600">{tx.vendorName ?? tx.vendor_name}</td>
                   <td className="p-3">
                     <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-semibold border border-slate-200">
                       {tx.category}
                     </span>
                   </td>
-                  <td className="p-3 text-slate-500">{tx.expense_date}</td>
+                  <td className="p-3 text-slate-500">{tx.expenseDate ?? tx.expense_date}</td>
                   <td className="p-3 text-right font-mono font-bold text-rose-700">{formatPKR(tx.amount)}</td>
                 </tr>
               ))}

@@ -197,9 +197,9 @@ export function RestaurantPOSPage() {
   }, [cartItems]);
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col md:flex-row overflow-hidden bg-slate-50 font-sans">
+    <div className="h-[calc(100vh-4rem)] flex flex-col md:flex-row overflow-y-auto md:overflow-hidden bg-slate-50 font-sans">
       {/* Main Catalog & Ordering Screen (Left 65% - 70%) */}
-      <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden">
+      <div className="flex-1 flex flex-col p-4 md:p-6 overflow-hidden min-h-[70vh] md:min-h-0 shrink-0 border-b md:border-b-0 border-slate-200">
         {/* Sleek Top Action Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-200/80 shrink-0">
           <div className="flex items-center gap-3">
@@ -328,7 +328,7 @@ export function RestaurantPOSPage() {
       </div>
 
       {/* Order Cart Sidebar (Right 30% - 35%) */}
-      <div className="w-full md:w-[380px] shrink-0 h-full">
+      <div className="w-full md:w-[380px] shrink-0 h-[75vh] md:h-full">
         <POSCartSidebar
           cartItems={cartItems}
           orderType={orderType}

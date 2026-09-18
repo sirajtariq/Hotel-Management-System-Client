@@ -36,16 +36,16 @@ export function ReceivablesTaxTab({ data, onRefresh }: ReceivablesTaxTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Tax / GST Collected</span>
-          <div className="text-2xl font-bold text-emerald-900 mt-1 font-sans">{formatPKR(data.total_tax_collected)}</div>
+          <div className="text-2xl font-bold text-emerald-900 mt-1 font-sans">{formatPKR(data.totalTaxCollected ?? data.total_tax_collected ?? 0)}</div>
           <div className="text-[11px] text-slate-500 mt-1">
-            Room Tax: {formatPKR(data.room_tax_collected)} | F&B Tax: {formatPKR(data.restaurant_tax_collected)}
+            Room Tax: {formatPKR(data.roomTaxCollected ?? data.room_tax_collected ?? 0)} | F&B Tax: {formatPKR(data.restaurantTaxCollected ?? data.restaurant_tax_collected ?? 0)}
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Aging Receivables</span>
-          <div className="text-2xl font-bold text-rose-900 mt-1 font-sans">{formatPKR(data.total_pending_balance)}</div>
-          <div className="text-[11px] text-slate-500 mt-1">{data.aging_receivables.length} Folios pending settlement</div>
+          <div className="text-2xl font-bold text-rose-900 mt-1 font-sans">{formatPKR(data.totalPendingBalance ?? data.total_pending_balance ?? 0)}</div>
+          <div className="text-[11px] text-slate-500 mt-1">{(data.agingReceivables ?? data.aging_receivables ?? []).length} Folios pending settlement</div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
@@ -78,36 +78,36 @@ export function ReceivablesTaxTab({ data, onRefresh }: ReceivablesTaxTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {data.aging_receivables.length === 0 ? (
+              {(data.agingReceivables ?? data.aging_receivables ?? []).length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-6 text-center text-slate-400">
                     No outstanding guest folios or uncollected receivables!
                   </td>
                 </tr>
               ) : (
-                data.aging_receivables.map((item) => (
+                (data.agingReceivables ?? data.aging_receivables ?? []).map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50">
                     <td className="p-3 font-semibold text-slate-900">
-                      <div>{item.guest_name}</div>
-                      <div className="text-[10px] text-slate-400 font-normal">{item.guest_phone}</div>
+                      <div>{item.guestName ?? item.guest_name}</div>
+                      <div className="text-[10px] text-slate-400 font-normal">{item.guestPhone ?? item.guest_phone}</div>
                     </td>
                     <td className="p-3">
                       <span className="bg-indigo-50 text-indigo-700 text-[10px] font-semibold px-1.5 py-0.2 rounded border border-indigo-100">
-                        Room #{item.room_number}
+                        Room #{item.roomNumber ?? item.room_number}
                       </span>
                     </td>
                     <td className="p-3 text-slate-500">
-                      {item.check_in_date} → {item.check_out_date}
+                      {item.checkInDate ?? item.check_in_date} → {item.checkOutDate ?? item.check_out_date}
                     </td>
-                    <td className="p-3 text-right font-mono text-slate-800">{formatPKR(item.total_amount)}</td>
-                    <td className="p-3 text-right font-mono text-emerald-700">{formatPKR(item.paid_amount)}</td>
-                    <td className="p-3 text-right font-mono font-bold text-rose-700">{formatPKR(item.balance_due)}</td>
+                    <td className="p-3 text-right font-mono text-slate-800">{formatPKR(item.totalAmount ?? item.total_amount ?? 0)}</td>
+                    <td className="p-3 text-right font-mono text-emerald-700">{formatPKR(item.paidAmount ?? item.paid_amount ?? 0)}</td>
+                    <td className="p-3 text-right font-mono font-bold text-rose-700">{formatPKR(item.balanceDue ?? item.balance_due ?? 0)}</td>
                     <td className="p-3 text-center">
                       <Can permission="bookings:update">
                         <Button
                           size="sm"
                           disabled={loadingId === item.id}
-                          onClick={() => handleQuickPayment(item.id, item.balance_due)}
+                          onClick={() => handleQuickPayment(item.id, item.balanceDue ?? item.balance_due ?? 0)}
                           className="h-7 px-2.5 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-2xs"
                         >
                           {loadingId === item.id ? (

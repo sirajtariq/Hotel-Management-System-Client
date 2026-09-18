@@ -14,7 +14,8 @@ export type FinancialReportType =
   | 'expenses'
   | 'hospitality'
   | 'restaurant'
-  | 'receivables';
+  | 'receivables'
+  | 'staff_commissions';
 
 // Tab 1: P&L Report Data
 export interface PnLLedgerItem {
@@ -27,23 +28,36 @@ export interface PnLTimeSeriesPoint {
   date: string;
   revenue: number;
   expenses: number;
-  net_profit: number;
+  net_profit?: number;
+  netProfit?: number;
 }
 
 export interface PnLReportData {
   period: FinancialPeriodFilter;
-  start_date: string;
-  end_date: string;
-  gross_revenue: number;
-  room_revenue: number;
-  restaurant_revenue: number;
-  operational_expenses: number;
-  payroll_expenses: number;
-  rent_expenses: number;
-  total_expenses: number;
-  net_profit: number;
-  profit_margin: number;
-  chart_data: PnLTimeSeriesPoint[];
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  gross_revenue?: number;
+  grossRevenue?: number;
+  room_revenue?: number;
+  roomRevenue?: number;
+  restaurant_revenue?: number;
+  restaurantRevenue?: number;
+  operational_expenses?: number;
+  operationalExpenses?: number;
+  payroll_expenses?: number;
+  payrollExpenses?: number;
+  rent_expenses?: number;
+  rentExpenses?: number;
+  total_expenses?: number;
+  totalExpenses?: number;
+  net_profit?: number;
+  netProfit?: number;
+  profit_margin?: number;
+  profitMargin?: number;
+  chart_data?: PnLTimeSeriesPoint[];
+  chartData?: PnLTimeSeriesPoint[];
   ledger: PnLLedgerItem[];
 }
 
@@ -68,19 +82,28 @@ export interface ChannelRatioItem {
 
 export interface DailySalesPoint {
   date: string;
-  room_revenue: number;
-  total_revenue: number;
+  room_revenue?: number;
+  roomRevenue?: number;
+  total_revenue?: number;
+  totalRevenue?: number;
 }
 
 export interface RevenueReportData {
   period: FinancialPeriodFilter;
-  start_date: string;
-  end_date: string;
-  total_revenue: number;
-  revenue_by_room_type: RoomTypeRevenueItem[];
-  payment_methods: PaymentMethodItem[];
-  channel_ratio: ChannelRatioItem[];
-  daily_sales: DailySalesPoint[];
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  total_revenue?: number;
+  totalRevenue?: number;
+  revenue_by_room_type?: RoomTypeRevenueItem[];
+  revenueByRoomType?: RoomTypeRevenueItem[];
+  payment_methods?: PaymentMethodItem[];
+  paymentMethods?: PaymentMethodItem[];
+  channel_ratio?: ChannelRatioItem[];
+  channelRatio?: ChannelRatioItem[];
+  daily_sales?: DailySalesPoint[];
+  dailySales?: DailySalesPoint[];
 }
 
 // Tab 3: Expense Report Data
@@ -92,12 +115,16 @@ export interface ExpenseCategoryBreakdownItem {
 
 export interface ExpenseTransactionItem {
   id: number;
-  item_name: string;
-  vendor_name: string;
+  item_name?: string;
+  itemName?: string;
+  vendor_name?: string;
+  vendorName?: string;
   category: string;
   amount: number;
-  expense_date: string;
-  created_by: string;
+  expense_date?: string;
+  expenseDate?: string;
+  created_by?: string;
+  createdBy?: string;
 }
 
 export interface DailyOutflowPoint {
@@ -107,12 +134,18 @@ export interface DailyOutflowPoint {
 
 export interface ExpenseReportData {
   period: FinancialPeriodFilter;
-  start_date: string;
-  end_date: string;
-  total_expenses: number;
-  categories_breakdown: ExpenseCategoryBreakdownItem[];
-  top_transactions: ExpenseTransactionItem[];
-  daily_outflow: DailyOutflowPoint[];
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  total_expenses?: number;
+  totalExpenses?: number;
+  categories_breakdown?: ExpenseCategoryBreakdownItem[];
+  categoriesBreakdown?: ExpenseCategoryBreakdownItem[];
+  top_transactions?: ExpenseTransactionItem[];
+  topTransactions?: ExpenseTransactionItem[];
+  daily_outflow?: DailyOutflowPoint[];
+  dailyOutflow?: DailyOutflowPoint[];
 }
 
 // Tab 4: Hospitality KPI Data
@@ -124,75 +157,176 @@ export interface HospitalityKpiPoint {
 }
 
 export interface RoomTypePerformanceItem {
-  room_type: string;
-  total_units: number;
-  nights_booked: number;
-  occupancy_rate: number;
-  revenue_generated: number;
+  room_type?: string;
+  roomType?: string;
+  total_units?: number;
+  totalUnits?: number;
+  nights_booked?: number;
+  nightsBooked?: number;
+  occupancy_rate?: number;
+  occupancyRate?: number;
+  revenue_generated?: number;
+  revenueGenerated?: number;
 }
 
 export interface HospitalityKpiReportData {
   period: FinancialPeriodFilter;
-  start_date: string;
-  end_date: string;
-  total_rooms: number;
-  occupied_room_nights: number;
-  occupancy_rate: number;
-  adr: number;
-  revpar: number;
-  alos: number;
-  kpi_trend: HospitalityKpiPoint[];
-  room_type_performance: RoomTypePerformanceItem[];
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  total_rooms?: number;
+  totalRooms?: number;
+  occupied_room_nights?: number;
+  occupiedRoomNights?: number;
+  occupancy_rate?: number;
+  occupancyRate?: number;
+  adr?: number;
+  revpar?: number;
+  alos?: number;
+  kpi_trend?: HospitalityKpiPoint[];
+  kpiTrend?: HospitalityKpiPoint[];
+  room_type_performance?: RoomTypePerformanceItem[];
+  roomTypePerformance?: RoomTypePerformanceItem[];
 }
 
 // Tab 5: Restaurant Report Data
 export interface OrderTypeSplitItem {
-  order_type: string;
+  order_type?: string;
+  orderType?: string;
   amount: number;
   count: number;
 }
 
 export interface TopSellerItem {
-  item_name: string;
-  category_name: string;
-  quantity_sold: number;
-  total_revenue: number;
+  item_name?: string;
+  itemName?: string;
+  category_name?: string;
+  categoryName?: string;
+  quantity_sold?: number;
+  quantitySold?: number;
+  total_revenue?: number;
+  totalRevenue?: number;
 }
 
 export interface RestaurantReportData {
   period: FinancialPeriodFilter;
-  start_date: string;
-  end_date: string;
-  total_sales: number;
-  total_discount: number;
-  total_tax: number;
-  order_type_split: OrderTypeSplitItem[];
-  top_sellers: TopSellerItem[];
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  total_sales?: number;
+  totalSales?: number;
+  total_discount?: number;
+  totalDiscount?: number;
+  total_tax?: number;
+  totalTax?: number;
+  order_type_split?: OrderTypeSplitItem[];
+  orderTypeSplit?: OrderTypeSplitItem[];
+  top_sellers?: TopSellerItem[];
+  topSellers?: TopSellerItem[];
 }
 
 // Tab 6: Receivables & Tax Data
 export interface AgingReceivableItem {
   id: number;
-  guest_name: string;
-  guest_phone: string;
-  room_number: string;
-  check_in_date: string;
-  check_out_date: string;
-  total_amount: number;
-  paid_amount: number;
-  balance_due: number;
+  guest_name?: string;
+  guestName?: string;
+  guest_phone?: string;
+  guestPhone?: string;
+  room_number?: string;
+  roomNumber?: string;
+  check_in_date?: string;
+  checkInDate?: string;
+  check_out_date?: string;
+  checkOutDate?: string;
+  total_amount?: number;
+  totalAmount?: number;
+  paid_amount?: number;
+  paidAmount?: number;
+  balance_due?: number;
+  balanceDue?: number;
   status: string;
 }
 
 export interface ReceivablesReportData {
   period: FinancialPeriodFilter;
-  start_date: string;
-  end_date: string;
-  room_tax_collected: number;
-  restaurant_tax_collected: number;
-  total_tax_collected: number;
-  total_pending_balance: number;
-  aging_receivables: AgingReceivableItem[];
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  room_tax_collected?: number;
+  roomTaxCollected?: number;
+  restaurant_tax_collected?: number;
+  restaurantTaxCollected?: number;
+  total_tax_collected?: number;
+  totalTaxCollected?: number;
+  total_pending_balance?: number;
+  totalPendingBalance?: number;
+  aging_receivables?: AgingReceivableItem[];
+  agingReceivables?: AgingReceivableItem[];
+}
+
+// Tab 7: Staff & Commission Report Data
+export interface OperatorsSummaryItem {
+  user_id: number;
+  userId?: number;
+  user_name: string;
+  userName?: string;
+  role: string;
+  total_entries_count: number;
+  totalEntriesCount?: number;
+  total_revenue_entered: number;
+  totalRevenueEntered?: number;
+}
+
+export interface AgentsSummaryItem {
+  agent_id: number;
+  agentId?: number;
+  agent_name: string;
+  agentName?: string;
+  role: string;
+  referred_bookings_count: number;
+  referredBookingsCount?: number;
+  total_referred_revenue: number;
+  totalReferredRevenue?: number;
+  commission_earned: number;
+  commissionEarned?: number;
+}
+
+export interface StaffBookingHistoryItem {
+  id: number;
+  booking_reference: string;
+  bookingReference?: string;
+  check_in_date: string;
+  checkInDate?: string;
+  guest_name: string;
+  guestName?: string;
+  room_number: string;
+  roomNumber?: string;
+  total_amount: number;
+  totalAmount?: number;
+  status: string;
+}
+
+export interface StaffCommissionReportData {
+  period: FinancialPeriodFilter;
+  start_date?: string;
+  startDate?: string;
+  end_date?: string;
+  endDate?: string;
+  total_bookings_created?: number;
+  totalBookingsCreated?: number;
+  commission_eligible_bookings?: number;
+  commissionEligibleBookings?: number;
+  total_revenue_handled?: number;
+  totalRevenueHandled?: number;
+  total_commission_payable?: number;
+  totalCommissionPayable?: number;
+  operators_summary: OperatorsSummaryItem[];
+  operatorsSummary?: OperatorsSummaryItem[];
+  agents_summary: AgentsSummaryItem[];
+  agentsSummary?: AgentsSummaryItem[];
 }
 
 // Backward Compatibility Types for legacy report components
