@@ -102,40 +102,40 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
 
       {/* Toast Notification Container (Positioned Top Right to avoid covering bottom action buttons) */}
-      <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      <div className="fixed top-4 right-4 left-4 sm:left-auto sm:top-5 sm:right-5 z-[9999] flex flex-col gap-2 sm:gap-2.5 w-auto sm:w-full sm:max-w-sm pointer-events-none">
         {toasts.map((item) => {
           let bgStyle = 'bg-slate-900 text-white border-slate-800';
-          let icon = <Info className="h-5 w-5 text-indigo-400 shrink-0" />;
+          let icon = <Info className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-400 shrink-0" />;
 
           if (item.type === 'success') {
             bgStyle = 'bg-slate-900/95 text-white border-emerald-500/30 shadow-emerald-950/20';
-            icon = <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />;
+            icon = <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400 shrink-0" />;
           } else if (item.type === 'error') {
             bgStyle = 'bg-slate-900/95 text-white border-rose-500/30 shadow-rose-950/20';
-            icon = <AlertCircle className="h-5 w-5 text-rose-400 shrink-0" />;
+            icon = <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-rose-400 shrink-0" />;
           } else if (item.type === 'warning') {
             bgStyle = 'bg-slate-900/95 text-white border-amber-500/30 shadow-amber-950/20';
-            icon = <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />;
+            icon = <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400 shrink-0" />;
           }
 
           return (
             <div
               key={item.id}
-              className={`pointer-events-auto rounded-xl p-4 border backdrop-blur-md shadow-2xl flex items-start gap-3 transition-all transform translate-y-0 text-xs font-sans ${bgStyle}`}
+              className={`pointer-events-auto rounded-lg sm:rounded-xl p-3 sm:p-4 border backdrop-blur-md shadow-2xl flex items-start gap-2.5 sm:gap-3 transition-all transform translate-y-0 text-xs font-sans ${bgStyle}`}
             >
               {icon}
-              <div className="flex-1 min-w-0 pr-1">
+              <div className="flex-1 min-w-0 pr-1 mt-0.5 sm:mt-0">
                 <div className="font-bold text-white leading-tight">{item.title}</div>
                 {item.description && (
-                  <div className="text-[11px] text-slate-300 mt-1 leading-snug">{item.description}</div>
+                  <div className="text-[10px] sm:text-[11px] text-slate-300 mt-0.5 sm:mt-1 leading-snug">{item.description}</div>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => removeToast(item.id)}
-                className="text-slate-400 hover:text-white p-0.5 rounded transition-colors"
+                className="text-slate-400 hover:text-white p-0.5 rounded transition-colors mt-0.5 sm:mt-0"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </div>
           );

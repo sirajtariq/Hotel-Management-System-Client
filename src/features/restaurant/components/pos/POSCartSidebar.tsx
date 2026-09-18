@@ -84,7 +84,7 @@ export function POSCartSidebar({
   const grandTotal = taxableAmount + taxAmount;
 
   return (
-    <div className="w-full h-full bg-white border-l border-slate-200 flex flex-col justify-between overflow-hidden font-sans">
+    <div className="w-full h-full bg-white md:border-l border-slate-200 flex flex-col justify-between overflow-hidden font-sans">
       {/* Header & Order Type */}
       <div className="p-4 border-b border-slate-100 space-y-3 shrink-0">
         <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Current Order Cart</h2>

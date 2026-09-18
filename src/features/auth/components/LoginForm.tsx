@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ export function LoginForm() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -82,10 +83,17 @@ export function LoginForm() {
           <Lock className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             {...register('password')}
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
-            className="pl-9 text-xs"
+            className="pl-9 pr-10 text-xs"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
         </div>
         {errors.password && <p className="text-[11px] text-rose-600 mt-1">{errors.password.message}</p>}
       </div>
