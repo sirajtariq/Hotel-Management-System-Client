@@ -19,35 +19,42 @@ export interface ReportQueryParams {
   report_type?: FinancialReportType;
 }
 
+function extractReportData<T>(resData: any): T {
+  if (resData && typeof resData === 'object' && 'data' in resData && !('period' in resData)) {
+    return resData.data as T;
+  }
+  return resData as T;
+}
+
 export const reportService = {
   async getPnLReport(params?: ReportQueryParams): Promise<PnLReportData> {
-    const response = await apiClient.get<PnLReportData>('/reports/financial/pnl/', { params });
-    return response.data;
+    const response = await apiClient.get('/reports/financial/pnl/', { params });
+    return extractReportData<PnLReportData>(response.data);
   },
 
   async getRevenueReport(params?: ReportQueryParams): Promise<RevenueReportData> {
-    const response = await apiClient.get<RevenueReportData>('/reports/financial/revenue/', { params });
-    return response.data;
+    const response = await apiClient.get('/reports/financial/revenue/', { params });
+    return extractReportData<RevenueReportData>(response.data);
   },
 
   async getExpenseReport(params?: ReportQueryParams): Promise<ExpenseReportData> {
-    const response = await apiClient.get<ExpenseReportData>('/reports/financial/expenses/', { params });
-    return response.data;
+    const response = await apiClient.get('/reports/financial/expenses/', { params });
+    return extractReportData<ExpenseReportData>(response.data);
   },
 
   async getHospitalityKpiReport(params?: ReportQueryParams): Promise<HospitalityKpiReportData> {
-    const response = await apiClient.get<HospitalityKpiReportData>('/reports/financial/hospitality_kpis/', { params });
-    return response.data;
+    const response = await apiClient.get('/reports/financial/hospitality_kpis/', { params });
+    return extractReportData<HospitalityKpiReportData>(response.data);
   },
 
   async getRestaurantReport(params?: ReportQueryParams): Promise<RestaurantReportData> {
-    const response = await apiClient.get<RestaurantReportData>('/reports/financial/restaurant/', { params });
-    return response.data;
+    const response = await apiClient.get('/reports/financial/restaurant/', { params });
+    return extractReportData<RestaurantReportData>(response.data);
   },
 
   async getReceivablesReport(params?: ReportQueryParams): Promise<ReceivablesReportData> {
-    const response = await apiClient.get<ReceivablesReportData>('/reports/financial/receivables/', { params });
-    return response.data;
+    const response = await apiClient.get('/reports/financial/receivables/', { params });
+    return extractReportData<ReceivablesReportData>(response.data);
   },
 
   async exportFinancialSuiteCSV(params: ReportQueryParams): Promise<void> {

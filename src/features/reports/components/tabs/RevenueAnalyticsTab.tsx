@@ -38,7 +38,7 @@ export function RevenueAnalyticsTab({ data }: RevenueAnalyticsTabProps) {
 
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.revenue_by_room_type} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <BarChart data={data.revenueByRoomType ?? data.revenue_by_room_type ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="room_type" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
@@ -62,8 +62,8 @@ export function RevenueAnalyticsTab({ data }: RevenueAnalyticsTabProps) {
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={data.payment_methods} dataKey="amount" nameKey="method" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4}>
-                  {data.payment_methods.map((_, index) => (
+                <Pie data={data.paymentMethods ?? data.payment_methods ?? []} dataKey="amount" nameKey="method" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4}>
+                  {(data.paymentMethods ?? data.payment_methods ?? []).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -94,11 +94,11 @@ export function RevenueAnalyticsTab({ data }: RevenueAnalyticsTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {data.daily_sales.map((row, idx) => (
+              {(data.dailySales ?? data.daily_sales ?? []).map((row, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/50">
                   <td className="p-3 font-semibold text-slate-900">{row.date}</td>
-                  <td className="p-3 text-right font-mono text-slate-700">{formatPKR(row.room_revenue)}</td>
-                  <td className="p-3 text-right font-mono text-emerald-700 font-bold">{formatPKR(row.total_revenue)}</td>
+                  <td className="p-3 text-right font-mono text-slate-700">{formatPKR(row.roomRevenue ?? row.room_revenue ?? 0)}</td>
+                  <td className="p-3 text-right font-mono text-emerald-700 font-bold">{formatPKR(row.totalRevenue ?? row.total_revenue ?? 0)}</td>
                 </tr>
               ))}
             </tbody>

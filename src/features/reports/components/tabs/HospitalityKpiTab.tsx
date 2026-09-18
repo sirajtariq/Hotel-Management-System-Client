@@ -24,8 +24,8 @@ export function HospitalityKpiTab({ data }: HospitalityKpiTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
           <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Occupancy Rate</span>
-          <div className="text-2xl font-bold text-blue-900 mt-1 font-sans">{data.occupancy_rate}%</div>
-          <div className="text-[11px] text-slate-500 mt-1">{data.occupied_room_nights} Room-Nights occupied</div>
+          <div className="text-2xl font-bold text-blue-900 mt-1 font-sans">{data.occupancyRate ?? data.occupancy_rate ?? 0}%</div>
+          <div className="text-[11px] text-slate-500 mt-1">{data.occupiedRoomNights ?? data.occupied_room_nights ?? 0} Room-Nights occupied</div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-2xs">
@@ -58,7 +58,7 @@ export function HospitalityKpiTab({ data }: HospitalityKpiTabProps) {
 
         <div className="h-[300px] w-full pt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.kpi_trend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+            <LineChart data={data.kpiTrend ?? data.kpi_trend ?? []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} />
               <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#3b82f6' }} tickLine={false} axisLine={false} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
@@ -93,13 +93,13 @@ export function HospitalityKpiTab({ data }: HospitalityKpiTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {data.room_type_performance.map((item, idx) => (
+              {(data.roomTypePerformance ?? data.room_type_performance ?? []).map((item, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/50">
-                  <td className="p-3 font-semibold text-slate-900">{item.room_type}</td>
-                  <td className="p-3 text-slate-600">{item.total_units} Units</td>
-                  <td className="p-3 text-slate-600">{item.nights_booked} Nights</td>
-                  <td className="p-3 font-bold text-blue-900">{item.occupancy_rate}%</td>
-                  <td className="p-3 text-right font-mono font-bold text-emerald-700">{formatPKR(item.revenue_generated)}</td>
+                  <td className="p-3 font-semibold text-slate-900">{item.roomType ?? item.room_type}</td>
+                  <td className="p-3 text-slate-600">{item.totalUnits ?? item.total_units} Units</td>
+                  <td className="p-3 text-slate-600">{item.nightsBooked ?? item.nights_booked} Nights</td>
+                  <td className="p-3 font-bold text-blue-900">{item.occupancyRate ?? item.occupancy_rate}%</td>
+                  <td className="p-3 text-right font-mono font-bold text-emerald-700">{formatPKR(item.revenueGenerated ?? item.revenue_generated ?? 0)}</td>
                 </tr>
               ))}
             </tbody>
