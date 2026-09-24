@@ -61,10 +61,22 @@ export function parseErrorMessage(errorData: any): string {
   if (typeof errorData === 'object') {
     if (errorData.message && typeof errorData.message === 'string') {
       if (errorData.errors && typeof errorData.errors === 'object' && errorData.code === 'validation_error') {
+        const errorKeys = Object.keys(errorData.errors);
+        const isOnlyNonField = errorKeys.every(k => k === 'detail' || k === 'non_field_errors');
+        
         const fieldMsgs = Object.entries(errorData.errors)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' ') : String(v)}`)
+          .map(([k, v]) => {
+            const valStr = Array.isArray(v) ? v.join(' ') : String(v);
+            return (k === 'detail' || k === 'non_field_errors') ? valStr : `${k}: ${valStr}`;
+          })
           .join(', ');
-        if (fieldMsgs) return `${errorData.message} (${fieldMsgs})`;
+
+        if (fieldMsgs) {
+          if (isOnlyNonField) {
+            return fieldMsgs;
+          }
+          return `${errorData.message} (${fieldMsgs})`;
+        }
       }
       return errorData.message;
     }
