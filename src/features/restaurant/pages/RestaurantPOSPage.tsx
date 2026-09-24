@@ -397,6 +397,7 @@ export function RestaurantPOSPage() {
           setCustomerPhone(data.customerPhone);
         }}
         onConfirmOrder={(statusOverride) => handlePlaceOrder(true, statusOverride)}
+        propertyId={selectedTable?.property || 1}
       />
 
       {/* Thermal Receipt Print Modal */}

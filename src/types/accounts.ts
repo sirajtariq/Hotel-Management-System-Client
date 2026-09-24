@@ -1,9 +1,12 @@
-export type AccountType = 'CASH' | 'BANK' | 'WALLET';
+export type AccountType = 'CASH' | 'BANK' | 'WALLET' | 'ONLINE' | 'OTHER';
 export type TransactionType = 'INFLOW' | 'OUTFLOW' | 'TRANSFER_IN' | 'TRANSFER_OUT';
 export type SourceModule = 'BOOKING' | 'POS' | 'EXPENSE' | 'TRANSFER' | 'MANUAL';
 
 export interface PaymentAccount {
   id: number;
+  property?: number | null;
+  property_name?: string;
+  propertyName?: string;
   name: string;
   account_type: AccountType;
   accountType?: AccountType;
@@ -65,6 +68,7 @@ export interface CreateAccountInput {
   branch_name?: string;
   opening_balance?: number;
   is_default?: boolean;
+  property_id?: number | null;
 }
 
 export interface CreateTransferInput {

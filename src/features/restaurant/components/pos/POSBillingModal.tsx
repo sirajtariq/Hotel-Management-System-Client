@@ -22,6 +22,7 @@ interface POSBillingModalProps {
     customerPhone: string;
   }) => void;
   onConfirmOrder: (paymentStatus: 'UNPAID' | 'PAID' | 'BILLED_TO_ROOM') => void;
+  propertyId?: number | string;
 }
 
 export function POSBillingModal({
@@ -36,6 +37,7 @@ export function POSBillingModal({
   customerPhone: initPhone,
   onUpdateBilling,
   onConfirmOrder,
+  propertyId,
 }: POSBillingModalProps) {
   const [discType, setDiscType] = useState<'FLAT' | 'PERCENTAGE'>(initDiscType);
   const [discVal, setDiscVal] = useState<number>(initDiscVal);
@@ -50,7 +52,7 @@ export function POSBillingModal({
   useEffect(() => {
     if (isOpen) {
       setIsSubmitting(false);
-      accountService.getPaymentAccounts().then((accs) => {
+      accountService.getPaymentAccounts(undefined, propertyId ? String(propertyId) : undefined).then((accs) => {
         const active = accs.filter((a) => (a.isActive ?? a.is_active));
         setPaymentAccounts(active);
         const defAcc = active.find((a) => (a.isDefault ?? a.is_default));
@@ -58,7 +60,7 @@ export function POSBillingModal({
         else if (active.length > 0) setSelectedAccountId(active[0].id);
       });
     }
-  }, [isOpen]);
+  }, [isOpen, propertyId]);
 
   if (!isOpen) return null;
 
@@ -232,7 +234,7 @@ export function POSBillingModal({
               >
                 {paymentAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                    {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
                   </option>
                 ))}
               </select>

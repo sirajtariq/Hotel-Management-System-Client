@@ -39,7 +39,7 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit, onSho
       setExtraCharges([]);
       setCurrentExtraChargeName('');
       setCurrentExtraChargeAmount('');
-      accountService.getPaymentAccounts().then((accs) => {
+      accountService.getPaymentAccounts(undefined, String(booking.propertyId)).then((accs) => {
         const active = accs.filter((a) => a.is_active);
         setPaymentAccounts(active);
         const defAcc = active.find((a) => a.is_default);
@@ -213,7 +213,7 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit, onSho
                 <option value="">-- Select Account --</option>
                 {paymentAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                    {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
                   </option>
                 ))}
               </select>

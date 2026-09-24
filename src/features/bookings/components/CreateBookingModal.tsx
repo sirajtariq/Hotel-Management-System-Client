@@ -111,15 +111,6 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       }).catch(() => {
         setStaffMembers([]);
       });
-
-      // Fetch payment accounts
-      accountService.getPaymentAccounts().then((accs) => {
-        const active = accs.filter((a) => a.is_active);
-        setPaymentAccounts(active);
-        const defAcc = active.find((a) => a.is_default);
-        if (defAcc) setPaymentAccountId(String(defAcc.id));
-        else if (active.length > 0) setPaymentAccountId(String(active[0].id));
-      });
     } else {
       setDiscountValue(0);
       setSelectedCommissionRecipientId('');
@@ -127,6 +118,19 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
       setPaymentAccountId('');
     }
   }, [isOpen, cachedProperties, isAdmin, userAssignedPropId]);
+
+  // Fetch payment accounts based on property
+  useEffect(() => {
+    if (isOpen && selectedPropertyId) {
+      accountService.getPaymentAccounts(undefined, selectedPropertyId).then((accs) => {
+        const active = accs.filter((a) => a.is_active);
+        setPaymentAccounts(active);
+        const defAcc = active.find((a) => a.is_default);
+        if (defAcc) setPaymentAccountId(String(defAcc.id));
+        else if (active.length > 0) setPaymentAccountId(String(active[0].id));
+      });
+    }
+  }, [isOpen, selectedPropertyId]);
 
   // Fetch available rooms on-demand whenever selectedPropertyId changes
   useEffect(() => {
@@ -830,7 +834,7 @@ export function CreateBookingModal({ isOpen, onClose, onSubmit, preselectedRoomI
                     >
                       {paymentAccounts.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                          {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
                         </option>
                       ))}
                     </select>

@@ -163,6 +163,9 @@ export function AccountsAdminTab() {
     .filter((a) => isAccountActive(a) && getAccountType(a) === 'WALLET')
     .reduce((acc, item) => acc + getAccountBalance(item), 0);
 
+  const centralAccounts = accounts.filter(a => !a.property);
+  const propertyAccounts = accounts.filter(a => a.property);
+
   return (
     <div className="space-y-6 font-sans">
       {/* Top Header & Actions Toolbar */}
@@ -296,25 +299,62 @@ export function AccountsAdminTab() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {accounts.map((acc) => (
-            <AccountCard
-              key={acc.id}
-              account={acc}
-              isToggling={togglingAccountId === acc.id}
-              onViewLedger={(a) => {
-                setLedgerAccount(a);
-                setIsLedgerModalOpen(true);
-              }}
-              onEdit={(a) => {
-                setEditingAccount(a);
-                setIsAddEditModalOpen(true);
-              }}
-              onSetDefault={handleSetDefault}
-              onToggleActive={handleToggleActive}
-              onDelete={(a) => setDeletingAccount(a)}
-            />
-          ))}
+        <div className="space-y-6">
+          {centralAccounts.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Landmark className="h-4 w-4" /> Central / Global Accounts
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {centralAccounts.map((acc) => (
+                  <AccountCard
+                    key={acc.id}
+                    account={acc}
+                    isToggling={togglingAccountId === acc.id}
+                    onViewLedger={(a) => {
+                      setLedgerAccount(a);
+                      setIsLedgerModalOpen(true);
+                    }}
+                    onEdit={(a) => {
+                      setEditingAccount(a);
+                      setIsAddEditModalOpen(true);
+                    }}
+                    onSetDefault={handleSetDefault}
+                    onToggleActive={handleToggleActive}
+                    onDelete={(a) => setDeletingAccount(a)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {propertyAccounts.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-slate-700 mb-3 uppercase tracking-wider flex items-center gap-2 mt-4">
+                <Banknote className="h-4 w-4" /> Property-Scoped Accounts (Cash Drawers)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {propertyAccounts.map((acc) => (
+                  <AccountCard
+                    key={acc.id}
+                    account={acc}
+                    isToggling={togglingAccountId === acc.id}
+                    onViewLedger={(a) => {
+                      setLedgerAccount(a);
+                      setIsLedgerModalOpen(true);
+                    }}
+                    onEdit={(a) => {
+                      setEditingAccount(a);
+                      setIsAddEditModalOpen(true);
+                    }}
+                    onSetDefault={handleSetDefault}
+                    onToggleActive={handleToggleActive}
+                    onDelete={(a) => setDeletingAccount(a)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

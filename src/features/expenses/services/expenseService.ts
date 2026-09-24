@@ -48,7 +48,7 @@ function normalizeAccountHead(h: any): AccountHead {
 
 export const expenseService = {
   // --- Account Heads ---
-  async getAccountHeads(params?: { search?: string; is_active?: boolean }): Promise<AccountHead[]> {
+  async getAccountHeads(params?: { search?: string; is_active?: boolean; property_id?: string }): Promise<AccountHead[]> {
     try {
       const response = await apiClient.get('/expenses/account-heads/', { params });
       const rawList = Array.isArray(response.data)

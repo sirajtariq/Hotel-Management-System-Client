@@ -3,6 +3,9 @@ import { PaymentAccount, AccountType, CreateAccountInput } from '@/types/account
 import { X, CreditCard, Landmark, Wallet, Check, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from '@/components/ui/ToastProvider';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { usePropertySelector } from '@/features/properties/hooks/usePropertySelector';
+import { Building } from 'lucide-react';
 
 interface AddEditAccountModalProps {
   isOpen: boolean;
@@ -25,7 +28,13 @@ export function AddEditAccountModal({
   const [branchName, setBranchName] = useState('');
   const [openingBalance, setOpeningBalance] = useState<number>(0);
   const [isDefault, setIsDefault] = useState(false);
+  const [propertyId, setPropertyId] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { user } = useAuth();
+  const { data: properties = [] } = usePropertySelector();
+
+  const isTenantAdmin = user?.role === 'TENANT_ADMIN' || user?.role === 'SUPERADMIN' || user?.isSuperuser || false;
 
   useEffect(() => {
     if (editingAccount) {
@@ -37,6 +46,7 @@ export function AddEditAccountModal({
       setBranchName(editingAccount.branch_name || '');
       setOpeningBalance(editingAccount.opening_balance || 0);
       setIsDefault(editingAccount.is_default || false);
+      setPropertyId(editingAccount.property || '');
     } else {
       setName('');
       setAccountType('CASH');
@@ -46,14 +56,31 @@ export function AddEditAccountModal({
       setBranchName('');
       setOpeningBalance(0);
       setIsDefault(false);
+      
+      // Auto-select first property if MD
+      if (!isTenantAdmin && properties.length > 0) {
+        setPropertyId(Number(properties[0].id));
+      } else {
+        setPropertyId('');
+      }
     }
-  }, [editingAccount, isOpen]);
+  }, [editingAccount, isOpen, isTenantAdmin, properties]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    if (!isTenantAdmin && accountType === 'BANK' && !propertyId) {
+      toast.error('MD Error', 'MD cannot create global bank accounts. Please select a property.');
+      return;
+    }
+
+    if (accountType === 'CASH' && !propertyId) {
+      toast.error('Validation Error', 'Cash Drawers must be assigned to a property.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -66,6 +93,7 @@ export function AddEditAccountModal({
         branch_name: accountType === 'BANK' ? branchName.trim() : '',
         opening_balance: openingBalance,
         is_default: isDefault,
+        property_id: propertyId ? Number(propertyId) : null,
       });
       onClose();
     } catch (err: any) {
@@ -167,6 +195,33 @@ export function AddEditAccountModal({
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
+          </div>
+
+          {/* Property Selector */}
+          <div>
+            <label className="block font-semibold uppercase text-slate-500 mb-1 flex items-center gap-1">
+              <Building className="h-3.5 w-3.5 text-slate-400" /> Linked Property
+            </label>
+            <select
+              value={propertyId}
+              onChange={(e) => setPropertyId(e.target.value ? Number(e.target.value) : '')}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 bg-white"
+            >
+              {isTenantAdmin && (
+                <option value="">Global / Chain-wide (For Shared Bank Accounts)</option>
+              )}
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {accountType === 'CASH' && !propertyId && (
+              <p className="text-[10px] text-rose-500 mt-1">Cash accounts must be assigned to a property.</p>
+            )}
+            {!isTenantAdmin && !propertyId && accountType === 'BANK' && (
+              <p className="text-[10px] text-rose-500 mt-1">Only Tenant Admins can create Global Bank Accounts.</p>
+            )}
           </div>
 
           {/* Bank Specific Details */}

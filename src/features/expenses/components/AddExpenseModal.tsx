@@ -49,30 +49,43 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
   const loadMetadata = async () => {
     setIsLoadingMeta(true);
     try {
-      const [heads, accs] = await Promise.all([
-        expenseService.getAccountHeads(),
-        accountService.getPaymentAccounts(),
-      ]);
       const props = cachedProperties.length > 0 ? (cachedProperties as Property[]) : await propertyService.getProperties();
       setProperties(props);
       if (props.length > 0 && !propertyId) {
         setPropertyId(String(props[0].id));
       }
-      setAccountHeads(heads.filter((h) => h.is_active));
-      if (heads.length > 0) {
-        const activeFirst = heads.find((h) => h.is_active);
-        if (activeFirst) setAccountHeadId(activeFirst.id);
-      }
-      setPaymentAccounts(accs);
-      if (accs.length > 0) {
-        setSelectedAccountId(accs[0].id);
-      }
     } catch {
-      toast.error('Load Error', 'Failed to load expense configuration.');
+      toast.error('Load Error', 'Failed to load properties.');
     } finally {
       setIsLoadingMeta(false);
     }
   };
+
+  useEffect(() => {
+    const fetchDependentData = async () => {
+      if (!propertyId) return;
+      try {
+        const [heads, accs] = await Promise.all([
+          expenseService.getAccountHeads({ property_id: propertyId }),
+          accountService.getPaymentAccounts(undefined, propertyId),
+        ]);
+        
+        setAccountHeads(heads.filter((h) => h.is_active));
+        if (heads.length > 0) {
+          const activeFirst = heads.find((h) => h.is_active);
+          if (activeFirst) setAccountHeadId(activeFirst.id);
+        }
+        
+        setPaymentAccounts(accs);
+        if (accs.length > 0) {
+          setSelectedAccountId(accs[0].id);
+        }
+      } catch {
+        toast.error('Load Error', 'Failed to load expense configuration.');
+      }
+    };
+    fetchDependentData();
+  }, [propertyId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -176,7 +189,7 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
               ) : (
                 accountHeads.map((h) => (
                   <option key={h.id} value={h.id}>
-                    {h.name}
+                    {h.name} [{h.property_name ? `${h.property_name}` : 'Chain-wide'}]
                   </option>
                 ))
               )}
@@ -249,7 +262,7 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
             >
               {paymentAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                  {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
                 </option>
               ))}
             </select>
