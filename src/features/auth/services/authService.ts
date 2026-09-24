@@ -51,6 +51,7 @@ function normalizeUser(data: any): User {
     } : null,
     custom_role_permissions: extractedPerms,
     permissions: extractedPerms,
+    tenant_details: userObj.tenant_details,
   };
 }
 

@@ -105,7 +105,6 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
     let available = 0;
     let occupied = 0;
     let reserved = 0;
-    let cleaning = 0;
     let dirty = 0;
     let maintenance = 0;
 
@@ -115,7 +114,6 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
 
       const isClean = hk === 'CLEAN' || hk === 'INSPECTED' || hk === '';
       const isDirty = hk === 'DIRTY' || hk === 'DIRTY_ROOM';
-      const isCleaning = st === 'CLEANING' || hk === 'IN_PROGRESS' || hk === 'CLEANING';
 
       if (st === 'OCCUPIED') {
         occupied++;
@@ -123,8 +121,6 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
         reserved++;
       } else if (st === 'MAINTENANCE') {
         maintenance++;
-      } else if (isCleaning) {
-        cleaning++;
       } else if (isDirty) {
         dirty++;
       } else if (st === 'AVAILABLE' && isClean) {
@@ -139,7 +135,6 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
       available,
       occupied,
       reserved,
-      cleaning,
       dirty,
       maintenance,
     };
@@ -153,15 +148,12 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
 
       const isClean = hkStatus === 'CLEAN' || hkStatus === 'INSPECTED' || hkStatus === '';
       const isDirty = hkStatus === 'DIRTY' || hkStatus === 'DIRTY_ROOM';
-      const isCleaning = roomStatus === 'CLEANING' || hkStatus === 'IN_PROGRESS' || hkStatus === 'CLEANING';
 
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'AVAILABLE') {
           if (roomStatus !== 'AVAILABLE' || !isClean) return false;
         } else if (statusFilter === 'DIRTY') {
           if (!isDirty) return false;
-        } else if (statusFilter === 'CLEANING') {
-          if (!isCleaning) return false;
         } else if (roomStatus !== statusFilter) {
           return false;
         }
@@ -305,29 +297,15 @@ export function LiveRoomGrid({ activePropertyId, onSelectRoomForBooking }: LiveR
 
           <button
             type="button"
-            onClick={() => setStatusFilter('CLEANING')}
-            className={cn(
-              'px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer',
-              statusFilter === 'CLEANING'
-                ? 'bg-purple-700 text-white font-semibold shadow-2xs'
-                : 'bg-purple-50 text-purple-800 border border-purple-200/80 hover:bg-purple-100'
-            )}
-          >
-            <span className="h-2 w-2 rounded-full bg-purple-500" />
-            Cleaning ({stats.cleaning})
-          </button>
-
-          <button
-            type="button"
             onClick={() => setStatusFilter('DIRTY')}
             className={cn(
               'px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer',
               statusFilter === 'DIRTY'
-                ? 'bg-amber-600 text-white font-semibold shadow-2xs'
-                : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+                ? 'bg-orange-600 text-white font-semibold shadow-2xs'
+                : 'bg-orange-50 text-orange-900 border border-orange-300 hover:bg-orange-100'
             )}
           >
-            <AlertTriangle className="h-3 w-3 text-amber-600" />
+            <AlertTriangle className="h-3 w-3 text-orange-600" />
             Dirty ({stats.dirty})
           </button>
 

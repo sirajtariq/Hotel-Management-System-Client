@@ -177,7 +177,7 @@ export function TransferFundsModal({
                 type="number"
                 required
                 min="1"
-                step="100"
+                step="any"
                 value={amount}
                 onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-extrabold text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"

@@ -55,6 +55,7 @@ export interface User {
   permissions?: string[];
   is_impersonated?: boolean;
   original_superadmin_id?: string;
+  tenant_details?: any;
 }
 
 

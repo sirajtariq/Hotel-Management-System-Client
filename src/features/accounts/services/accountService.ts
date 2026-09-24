@@ -140,12 +140,15 @@ export const accountService = {
     }
   },
 
-  async getAccountTransactions(accountId: number): Promise<AccountTransaction[]> {
+  async getAccountTransactions(accountId: number, page: number = 1): Promise<{ results: AccountTransaction[], next: string | null, previous: string | null, count: number }> {
     try {
-      const response = await apiClient.get(`/payment-accounts/${accountId}/transactions/`);
-      return extractArray<AccountTransaction>(response.data, []);
+      const response = await apiClient.get(`/payment-accounts/${accountId}/transactions/?page=${page}`);
+      if (response.data && response.data.results) {
+        return response.data;
+      }
+      return { results: Array.isArray(response.data) ? response.data : [], next: null, previous: null, count: 0 };
     } catch {
-      return [];
+      return { results: [], next: null, previous: null, count: 0 };
     }
   },
 

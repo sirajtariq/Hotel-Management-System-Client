@@ -97,7 +97,12 @@ export function RoomsPage() {
   const filteredRooms = safeRooms.filter((r) => {
     const numStr = r.roomNumber || '';
     const matchesSearch = numStr.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusTab === 'all' || r.status === statusTab;
+    const matchesStatus =
+      statusTab === 'all'
+        ? true
+        : statusTab === 'dirty'
+        ? String(r.housekeeping_status || '').toLowerCase() === 'dirty' || String(r.housekeeping_status || '').toLowerCase() === 'dirty_room'
+        : String(r.status || '').toLowerCase() === statusTab.toLowerCase();
     const matchesFloor = floorFilter === 'all' || r.floor === Number(floorFilter);
     const matchesProperty =
       propertyFilter === 'all' ||
