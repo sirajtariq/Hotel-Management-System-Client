@@ -17,8 +17,8 @@ export const accountService = {
   async getPaymentAccounts(accountType?: string, propertyId?: string): Promise<PaymentAccount[]> {
     try {
       const params = new URLSearchParams();
-      if (accountType) params.append('account_type', accountType);
-      if (propertyId) params.append('property_id', propertyId);
+      if (accountType && accountType !== 'undefined' && accountType !== 'null') params.append('account_type', accountType);
+      if (propertyId && propertyId !== 'undefined' && propertyId !== 'null') params.append('property_id', propertyId);
       const url = `/payment-accounts/?${params.toString()}`;
       const response = await apiClient.get(url);
       const raw = extractArray<any>(response.data, []);
