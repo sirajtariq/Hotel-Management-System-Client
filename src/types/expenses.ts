@@ -3,9 +3,6 @@ export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CARD' | 'ONLINE';
 export interface AccountHead {
   id: number;
   tenant?: number;
-  property?: number | null;
-  property_name?: string;
-  propertyName?: string;
   name: string;
   description?: string;
   is_active: boolean;

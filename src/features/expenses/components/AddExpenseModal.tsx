@@ -66,7 +66,7 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
       if (!propertyId) return;
       try {
         const [heads, accs] = await Promise.all([
-          expenseService.getAccountHeads({ property_id: propertyId }),
+          expenseService.getAccountHeads(),
           accountService.getPaymentAccounts(undefined, propertyId),
         ]);
         
@@ -194,7 +194,8 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
               ) : (
                 accountHeads.map((h) => (
                   <option key={h.id} value={h.id}>
-                    {h.name} [{h.property_name ? `${h.property_name}` : 'Chain-wide'}]
+                    {h.name}
+
                   </option>
                 ))
               )}

@@ -288,9 +288,6 @@ export function ManageAccountHeadsModal({
                     <div className="space-y-0.5 max-w-[60%]">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-xs text-slate-900">{head.name}</span>
-                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
-                          {(head.propertyName || head.property_name) ? (head.propertyName || head.property_name) : 'Chain-wide'}
-                        </span>
                         {head.is_active ? (
                           <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-emerald-200">
                             <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Active
