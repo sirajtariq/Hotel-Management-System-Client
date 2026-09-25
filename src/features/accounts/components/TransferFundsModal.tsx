@@ -136,7 +136,7 @@ export function TransferFundsModal({
             >
               {activeAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
+                  {a.name} [{(a.propertyName || a.property_name) ? (a.propertyName || a.property_name) : 'Global'}] — Balance: PKR {Number(a.current_balance !== undefined ? a.current_balance : (a.currentBalance !== undefined ? a.currentBalance : 0)).toLocaleString()}
                 </option>
               ))}
             </select>
@@ -161,7 +161,7 @@ export function TransferFundsModal({
             >
               {activeAccounts.map((a) => (
                 <option key={a.id} value={a.id} disabled={a.id === Number(fromAccountId)}>
-                  {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
+                  {a.name} [{(a.propertyName || a.property_name) ? (a.propertyName || a.property_name) : 'Global'}] — Balance: PKR {Number(a.current_balance !== undefined ? a.current_balance : (a.currentBalance !== undefined ? a.currentBalance : 0)).toLocaleString()}
                 </option>
               ))}
             </select>

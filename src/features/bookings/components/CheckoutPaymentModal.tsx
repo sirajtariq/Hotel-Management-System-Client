@@ -39,10 +39,12 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit, onSho
       setExtraCharges([]);
       setCurrentExtraChargeName('');
       setCurrentExtraChargeAmount('');
-      accountService.getPaymentAccounts(undefined, String(booking.propertyId)).then((accs) => {
+      accountService.getPaymentAccounts(undefined, String(booking.propertyId || (booking as any).property)).then((accs) => {
         const active = accs.filter((a) => a.is_active);
         setPaymentAccounts(active);
-        const defAcc = active.find((a) => a.is_default);
+        const localDef = active.find((a) => a.is_default && a.property);
+        const globalDef = active.find((a) => a.is_default && !a.property);
+        const defAcc = localDef || globalDef;
         if (defAcc) setSelectedAccountId(defAcc.id);
         else if (active.length > 0) setSelectedAccountId(active[0].id);
       });
@@ -213,7 +215,7 @@ export function CheckoutPaymentModal({ booking, isOpen, onClose, onSubmit, onSho
                 <option value="">-- Select Account --</option>
                 {paymentAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
+                    {a.name} [{(a.propertyName || a.property_name) ? (a.propertyName || a.property_name) : 'Global'}] — Balance: PKR {Number(a.current_balance !== undefined ? a.current_balance : (a.currentBalance !== undefined ? a.currentBalance : 0)).toLocaleString()}
                   </option>
                 ))}
               </select>

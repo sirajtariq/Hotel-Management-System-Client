@@ -77,7 +77,12 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
         }
         
         setPaymentAccounts(accs);
-        if (accs.length > 0) {
+        const localDef = accs.find((a) => a.is_default && a.property);
+        const globalDef = accs.find((a) => a.is_default && !a.property);
+        const defAcc = localDef || globalDef;
+        if (defAcc) {
+          setSelectedAccountId(defAcc.id);
+        } else if (accs.length > 0) {
           setSelectedAccountId(accs[0].id);
         }
       } catch {
@@ -262,7 +267,7 @@ export function AddExpenseModal({ isOpen, onClose, onSubmit, onOpenManageHeads }
             >
               {paymentAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} [{a.property_name ? `${a.property_name}` : 'Global'}] — Balance: PKR {a.current_balance !== undefined ? a.current_balance.toLocaleString() : 'N/A'}
+                  {a.name} [{(a.propertyName || a.property_name) ? (a.propertyName || a.property_name) : 'Global'}] — Balance: PKR {Number(a.current_balance !== undefined ? a.current_balance : (a.currentBalance !== undefined ? a.currentBalance : 0)).toLocaleString()}
                 </option>
               ))}
             </select>
