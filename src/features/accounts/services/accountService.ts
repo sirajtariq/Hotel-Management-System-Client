@@ -14,9 +14,12 @@ function extractArray<T>(data: any, fallback: T[]): T[] {
 }
 
 export const accountService = {
-  async getPaymentAccounts(accountType?: string): Promise<PaymentAccount[]> {
+  async getPaymentAccounts(accountType?: string, propertyId?: string): Promise<PaymentAccount[]> {
     try {
-      const url = accountType ? `/payment-accounts/?account_type=${accountType}` : '/payment-accounts/';
+      const params = new URLSearchParams();
+      if (accountType && accountType !== 'undefined' && accountType !== 'null') params.append('account_type', accountType);
+      if (propertyId && propertyId !== 'undefined' && propertyId !== 'null') params.append('property_id', propertyId);
+      const url = `/payment-accounts/?${params.toString()}`;
       const response = await apiClient.get(url);
       const raw = extractArray<any>(response.data, []);
       return raw.map((item) => {
@@ -39,7 +42,11 @@ export const accountService = {
 
   async createPaymentAccount(input: CreateAccountInput): Promise<PaymentAccount> {
     try {
-      const response = await apiClient.post('/payment-accounts/', input);
+      const payload: any = { ...input };
+      if (payload.property_id !== undefined) {
+        payload.property = payload.property_id;
+      }
+      const response = await apiClient.post('/payment-accounts/', payload);
       const isAct = typeof response.data.is_active === 'boolean' ? response.data.is_active : true;
       const isDef = typeof response.data.is_default === 'boolean' ? response.data.is_default : false;
       return {
@@ -64,7 +71,11 @@ export const accountService = {
 
   async updatePaymentAccount(id: number, input: Partial<CreateAccountInput>): Promise<PaymentAccount> {
     try {
-      const response = await apiClient.patch(`/payment-accounts/${id}/`, input);
+      const payload: any = { ...input };
+      if (payload.property_id !== undefined) {
+        payload.property = payload.property_id;
+      }
+      const response = await apiClient.patch(`/payment-accounts/${id}/`, payload);
       const isAct = typeof response.data.is_active === 'boolean' ? response.data.is_active : true;
       const isDef = typeof response.data.is_default === 'boolean' ? response.data.is_default : false;
       return {
@@ -140,12 +151,15 @@ export const accountService = {
     }
   },
 
-  async getAccountTransactions(accountId: number): Promise<AccountTransaction[]> {
+  async getAccountTransactions(accountId: number, page: number = 1): Promise<{ results: AccountTransaction[], next: string | null, previous: string | null, count: number }> {
     try {
-      const response = await apiClient.get(`/payment-accounts/${accountId}/transactions/`);
-      return extractArray<AccountTransaction>(response.data, []);
+      const response = await apiClient.get(`/payment-accounts/${accountId}/transactions/?page=${page}`);
+      if (response.data && response.data.results) {
+        return response.data;
+      }
+      return { results: Array.isArray(response.data) ? response.data : [], next: null, previous: null, count: 0 };
     } catch {
-      return [];
+      return { results: [], next: null, previous: null, count: 0 };
     }
   },
 

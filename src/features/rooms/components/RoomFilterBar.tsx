@@ -35,7 +35,7 @@ export function RoomFilterBar({
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="available">Available</TabsTrigger>
             <TabsTrigger value="occupied">Occupied</TabsTrigger>
-            <TabsTrigger value="cleaning">Cleaning</TabsTrigger>
+            <TabsTrigger value="dirty">Dirty</TabsTrigger>
             <TabsTrigger value="reserved">Reserved</TabsTrigger>
           </TabsList>
         </Tabs>

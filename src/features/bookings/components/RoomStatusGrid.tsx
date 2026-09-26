@@ -85,7 +85,6 @@ export function RoomStatusGrid({
     let availableReady = 0;
     let occupied = 0;
     let reserved = 0;
-    let cleaning = 0;
     let dirty = 0;
     let maintenance = 0;
 
@@ -95,7 +94,6 @@ export function RoomStatusGrid({
 
       const isCleanOrInspected = hkUpper === 'CLEAN' || hkUpper === 'INSPECTED';
       const isDirtyState = hkUpper === 'DIRTY';
-      const isCleaningState = hkUpper === 'IN_PROGRESS' || hkUpper === 'CLEANING';
 
       if (statusUpper === 'OCCUPIED') {
         occupied++;
@@ -103,8 +101,6 @@ export function RoomStatusGrid({
         reserved++;
       } else if (statusUpper === 'MAINTENANCE' || hkUpper === 'MAINTENANCE') {
         maintenance++;
-      } else if (isCleaningState) {
-        cleaning++;
       } else if (isDirtyState) {
         dirty++;
       } else if (statusUpper === 'AVAILABLE' && isCleanOrInspected) {
@@ -119,7 +115,6 @@ export function RoomStatusGrid({
       availableReady,
       occupied,
       reserved,
-      cleaning,
       dirty,
       maintenance,
     };
@@ -159,7 +154,6 @@ export function RoomStatusGrid({
 
       const isCleanOrInspected = hkUpper === 'CLEAN' || hkUpper === 'INSPECTED';
       const isDirtyState = hkUpper === 'DIRTY';
-      const isCleaningState = hkUpper === 'IN_PROGRESS' || hkUpper === 'CLEANING';
 
       if (statusFilter === 'AVAILABLE_READY') {
         return statusUpper === 'AVAILABLE' && isCleanOrInspected;
@@ -169,9 +163,6 @@ export function RoomStatusGrid({
       }
       if (statusFilter === 'RESERVED') {
         return statusUpper === 'RESERVED';
-      }
-      if (statusFilter === 'CLEANING') {
-        return isCleaningState;
       }
       if (statusFilter === 'DIRTY') {
         return isDirtyState;
@@ -352,21 +343,6 @@ export function RoomStatusGrid({
             Reserved ({counts.reserved})
           </button>
 
-          {/* Cleaning */}
-          <button
-            type="button"
-            onClick={() => setStatusFilter('CLEANING')}
-            className={cn(
-              'px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 border',
-              statusFilter === 'CLEANING'
-                ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
-                : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
-            )}
-          >
-            <span className="h-2 w-2 rounded-full bg-purple-500" />
-            Cleaning ({counts.cleaning})
-          </button>
-
           {/* Dirty */}
           <button
             type="button"
@@ -465,7 +441,6 @@ export function RoomStatusGrid({
             const hkUpper = String(room.housekeeping_status || 'CLEAN').toUpperCase();
 
             const isDirty = hkUpper === 'DIRTY';
-            const isCleaning = hkUpper === 'IN_PROGRESS' || hkUpper === 'CLEANING';
             const isOccupied = statusUpper === 'OCCUPIED';
             const isReserved = statusUpper === 'RESERVED';
             const isMaintenance = statusUpper === 'MAINTENANCE' || hkUpper === 'MAINTENANCE';
@@ -483,9 +458,6 @@ export function RoomStatusGrid({
               }
               if (isReserved) {
                 return 'border-amber-200 hover:border-amber-400 hover:shadow-md hover:shadow-amber-500/5 bg-white';
-              }
-              if (isCleaning) {
-                return 'border-purple-200 hover:border-purple-400 hover:shadow-md hover:shadow-purple-500/5 bg-white';
               }
               if (isDirty) {
                 return 'border-orange-200 hover:border-orange-400 hover:shadow-md hover:shadow-orange-500/5 bg-white';
@@ -510,14 +482,6 @@ export function RoomStatusGrid({
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                     <span className="h-2 w-2 rounded-full bg-amber-500" />
                     Reserved
-                  </span>
-                );
-              }
-              if (isCleaning) {
-                return (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200">
-                    <span className="h-2 w-2 rounded-full bg-purple-600 animate-pulse" />
-                    Cleaning
                   </span>
                 );
               }

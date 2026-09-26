@@ -18,16 +18,29 @@ export function AccountLedgerModal({
 }: AccountLedgerModalProps) {
   const [transactions, setTransactions] = useState<AccountTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentPage(1);
+    }
+  }, [isOpen, account?.id]);
 
   useEffect(() => {
     if (isOpen && account) {
       setIsLoading(true);
       accountService
-        .getAccountTransactions(account.id)
-        .then((data) => setTransactions(Array.isArray(data) ? data : []))
+        .getAccountTransactions(account.id, currentPage)
+        .then((data) => {
+          setTransactions(data.results || []);
+          setHasNext(!!data.next);
+          setHasPrev(!!data.previous);
+        })
         .finally(() => setIsLoading(false));
     }
-  }, [isOpen, account]);
+  }, [isOpen, account, currentPage]);
 
   if (!isOpen || !account) return null;
 
@@ -171,11 +184,29 @@ export function AccountLedgerModal({
         </div>
 
         {/* Footer */}
-        <div className="pt-2 flex justify-end">
+        <div className="pt-2 flex items-center justify-between">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!hasPrev || isLoading}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={!hasNext || isLoading}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            className="px-5 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             Close Statement
           </button>

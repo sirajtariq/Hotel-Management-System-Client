@@ -17,6 +17,7 @@ const DEFAULT_MANAGER_PERMISSIONS = [
   'rooms:view', 'rooms:manage', 'rooms:change_status',
   'bookings:view', 'bookings:create', 'bookings:update', 'bookings:record_payment', 'bookings:cancel',
   'expenses:view', 'expenses:create', 'expenses:delete',
+  'accounts:view', 'accounts:manage',
   'staff:view', 'staff:manage',
   'reports:view_pnl', 'reports:export',
 ];

@@ -13,7 +13,6 @@ export function RoomGridCard({ room, onSelectRoom }: RoomGridCardProps) {
   const statusUpper = String(room.status || 'AVAILABLE').toUpperCase();
   const hkStatusUpper = String(room.housekeeping_status || 'CLEAN').toUpperCase();
   const isDirty = hkStatusUpper === 'DIRTY' || hkStatusUpper === 'DIRTY_ROOM';
-  const isCleaning = statusUpper === 'CLEANING' || hkStatusUpper === 'IN_PROGRESS' || hkStatusUpper === 'CLEANING';
   const isOccupiedOrReserved = statusUpper === 'OCCUPIED' || statusUpper === 'RESERVED';
 
   const getThemeClasses = () => {
@@ -24,15 +23,10 @@ export function RoomGridCard({ room, onSelectRoom }: RoomGridCardProps) {
         return 'border-amber-300 bg-amber-50/30 hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5';
       case 'MAINTENANCE':
         return 'border-rose-300 bg-rose-50/30 hover:border-rose-500 hover:shadow-md hover:-translate-y-0.5';
-      case 'CLEANING':
-        return 'border-purple-300 bg-purple-50/30 hover:border-purple-500 hover:shadow-md hover:-translate-y-0.5';
       case 'AVAILABLE':
       default:
-        if (isCleaning) {
-          return 'border-purple-300 bg-purple-50/30 hover:border-purple-500 hover:shadow-md hover:-translate-y-0.5';
-        }
         if (isDirty) {
-          return 'border-amber-400 bg-amber-50/40 hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5';
+          return 'border-orange-400 bg-orange-50/40 hover:border-orange-500 hover:shadow-md hover:-translate-y-0.5';
         }
         return 'border-emerald-300 bg-emerald-50/20 hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5';
     }
@@ -63,18 +57,10 @@ export function RoomGridCard({ room, onSelectRoom }: RoomGridCardProps) {
         </span>
       );
     }
-    if (isCleaning) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
-          <Sparkles className="h-3 w-3 text-purple-700" />
-          Cleaning In-Progress
-        </span>
-      );
-    }
     if (isDirty) {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-amber-50 text-amber-900 border border-amber-400 shrink-0">
-          <AlertTriangle className="h-3 w-3 text-amber-600" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-orange-50 text-orange-900 border border-orange-400 shrink-0">
+          <AlertTriangle className="h-3 w-3 text-orange-600" />
           Dirty / Needs Cleaning
         </span>
       );
@@ -97,7 +83,7 @@ export function RoomGridCard({ room, onSelectRoom }: RoomGridCardProps) {
     >
       {/* Top Accent Strip for Dirty Rooms */}
       {statusUpper === 'AVAILABLE' && isDirty && (
-        <div className="absolute top-0 left-0 right-0 h-1 bg-amber-400" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-orange-400" />
       )}
 
       {/* Top Header Row */}

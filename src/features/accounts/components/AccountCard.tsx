@@ -71,7 +71,7 @@ export function AccountCard({
   return (
     <div
       className={cn(
-        'border rounded-2xl p-5 transition-all duration-200 flex flex-col justify-between relative overflow-hidden group font-sans select-none',
+        'border rounded-xl p-3.5 transition-all duration-200 flex flex-col justify-between relative overflow-hidden group font-sans select-none',
         !isActive
           ? 'bg-slate-100/95 border-slate-300 opacity-75 hover:opacity-90 grayscale-[20%] text-slate-500 shadow-2xs'
           : isDefault
@@ -118,7 +118,7 @@ export function AccountCard({
             {isDefault ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300/80 shadow-2xs">
                 <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                <span>Default Account</span>
+                <span>{account.property ? 'Property Default' : 'Global Default'}</span>
               </span>
             ) : null}
 
@@ -152,19 +152,24 @@ export function AccountCard({
         <h3 className={cn('text-base font-bold transition-colors line-clamp-1', isActive ? 'text-slate-900 group-hover:text-indigo-900' : 'text-slate-600')}>
           {account.name}
         </h3>
+        <div className="mt-1">
+          <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200 font-medium">
+            {account.property_name || account.propertyName ? (account.property_name || account.propertyName) : 'Central / Global'}
+          </span>
+        </div>
 
         {/* Financial Balance Display (Hero Area) */}
-        <div className="mt-2.5">
-          <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase block">
+        <div className="mt-1.5">
+          <span className="text-[9px] font-semibold text-slate-400 tracking-wider uppercase block">
             Available Balance
           </span>
-          <div className={cn('text-2xl font-extrabold tracking-tight font-mono mt-0.5', isActive ? 'text-slate-900' : 'text-slate-500')}>
+          <div className={cn('text-xl font-extrabold tracking-tight font-mono', isActive ? 'text-slate-900' : 'text-slate-500')}>
             {formatPKR(currentBalance)}
           </div>
         </div>
 
         {/* Structured Metadata Details Section (Clean Empty State Handling) */}
-        <div className="bg-slate-50/80 border border-slate-200/60 rounded-xl p-3 my-3 space-y-1.5 text-xs text-slate-600 min-h-[82px] flex flex-col justify-center">
+        <div className="bg-slate-50/80 border border-slate-200/60 rounded-lg p-2.5 my-2 space-y-1 text-[11px] text-slate-600 min-h-[64px] flex flex-col justify-center">
           {isBank && (!bankName && !accountNumber) ? (
             <div className="text-center py-1 px-2">
               <p className="text-[11px] text-slate-400 font-medium italic leading-relaxed">

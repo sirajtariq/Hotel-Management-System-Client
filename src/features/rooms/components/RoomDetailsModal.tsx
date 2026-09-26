@@ -401,67 +401,7 @@ export const RoomDetailsModal: React.FC<RoomDetailsModalProps> = ({
           )}
         </div>
 
-        {/* Section 3: Dual Status Quick Switchers */}
-        <div className="pt-3 border-t border-slate-100 space-y-3">
-          {/* Housekeeping Switcher */}
-          {onHousekeepingChange && (
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
-                <Sparkle className="h-3 w-3 text-amber-500" /> Housekeeping Status Switcher
-              </span>
-              <div className="grid grid-cols-4 gap-1.5">
-                {(['CLEAN', 'DIRTY', 'IN_PROGRESS', 'INSPECTED'] as HousekeepingStatus[]).map((hk) => {
-                  const isSelected = room.housekeeping_status === hk;
-                  const label = hk === 'IN_PROGRESS' || hk === 'in_progress' ? 'CLEANING' : hk.replace('_', ' ');
-                  return (
-                    <button
-                      key={hk}
-                      type="button"
-                      onClick={() => onHousekeepingChange(room.id, hk)}
-                      className={cn(
-                        'py-1.5 px-2 rounded-xl text-[10px] font-bold uppercase transition-all border cursor-pointer',
-                        isSelected
-                          ? 'bg-indigo-900 text-white border-indigo-900 shadow-2xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      )}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
-          {/* Room Operational Status Switcher */}
-          {onStatusChange && (
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block flex items-center gap-1">
-                <Wrench className="h-3 w-3 text-indigo-500" /> Room Status Switcher
-              </span>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(['AVAILABLE', 'CLEANING', 'MAINTENANCE'] as RoomStatus[]).map((st) => {
-                  const isSelected = statusUpper === st;
-                  return (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => onStatusChange(room.id, st)}
-                      className={cn(
-                        'py-1.5 px-2 rounded-xl text-[10px] font-bold uppercase transition-all border cursor-pointer',
-                        isSelected
-                          ? 'bg-indigo-950 text-white border-indigo-950 shadow-2xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      )}
-                    >
-                      {st}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Footer Actions */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-between">

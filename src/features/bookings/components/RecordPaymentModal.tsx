@@ -30,10 +30,12 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
       setAmount(booking.remainingAmount || 0);
       setExtraChargeName('');
       setExtraChargeAmount(0);
-      accountService.getPaymentAccounts().then((accs) => {
+      accountService.getPaymentAccounts(undefined, String(booking.propertyId || (booking as any).property)).then((accs) => {
         const active = accs.filter((a) => a.is_active);
         setPaymentAccounts(active);
-        const defAcc = active.find((a) => a.is_default);
+        const localDef = active.find((a) => a.is_default && a.property);
+        const globalDef = active.find((a) => a.is_default && !a.property);
+        const defAcc = localDef || globalDef;
         if (defAcc) setSelectedAccountId(defAcc.id);
         else if (active.length > 0) setSelectedAccountId(active[0].id);
       });
@@ -148,7 +150,7 @@ export function RecordPaymentModal({ booking, isOpen, onClose, onSubmit }: Recor
             >
               {paymentAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} ({a.account_type}) — Balance: PKR {a.current_balance.toLocaleString()}
+                  {a.name} [{(a.propertyName || a.property_name) ? (a.propertyName || a.property_name) : 'Global'}] — Balance: PKR {Number(a.current_balance !== undefined ? a.current_balance : (a.currentBalance !== undefined ? a.currentBalance : 0)).toLocaleString()}
                 </option>
               ))}
             </select>

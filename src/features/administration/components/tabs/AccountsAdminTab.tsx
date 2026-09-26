@@ -75,12 +75,7 @@ export function AccountsAdminTab() {
   const handleSetDefault = async (id: number, name: string) => {
     try {
       await accountService.setDefaultAccount(id);
-      setAccounts((prev) =>
-        prev.map((a) => ({
-          ...a,
-          is_default: a.id === id,
-        }))
-      );
+      fetchAccounts();
       queryClient.invalidateQueries({ queryKey: ['paymentAccounts'] });
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardAnalytics'] });
@@ -162,6 +157,9 @@ export function AccountsAdminTab() {
   const walletTotal = accounts
     .filter((a) => isAccountActive(a) && getAccountType(a) === 'WALLET')
     .reduce((acc, item) => acc + getAccountBalance(item), 0);
+
+  const centralAccounts = accounts.filter(a => !a.property);
+  const propertyAccounts = accounts.filter(a => a.property);
 
   return (
     <div className="space-y-6 font-sans">
@@ -296,7 +294,7 @@ export function AccountsAdminTab() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {accounts.map((acc) => (
             <AccountCard
               key={acc.id}

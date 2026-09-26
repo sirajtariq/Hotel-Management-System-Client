@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { StaffMember, CreateStaffInput } from '@/types/staff';
 import { Property } from '@/types/properties';
 import { RoleItem } from '@/types/roles';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -36,6 +37,9 @@ export function StaffFormModal({
   roles = [],
   quotaUsage,
 }: StaffFormModalProps) {
+  const { user } = useAuth();
+  const isTenantAdmin = user?.role?.toUpperCase() === 'TENANT_ADMIN' || user?.role?.toUpperCase() === 'SUPERADMIN' || user?.role?.toUpperCase() === 'SUPER_ADMIN';
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [position, setPosition] = useState('');
@@ -262,8 +266,11 @@ export function StaffFormModal({
                   value={propertyId}
                   onChange={(e) => setPropertyId(e.target.value)}
                   className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required={!isTenantAdmin}
                 >
-                  <option value="">All Properties (Central Staff)</option>
+                  {isTenantAdmin && (
+                    <option value="">All Properties (Central Staff)</option>
+                  )}
                   {properties.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.city})

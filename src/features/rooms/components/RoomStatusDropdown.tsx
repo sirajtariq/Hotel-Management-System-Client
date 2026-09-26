@@ -23,10 +23,7 @@ export function RoomStatusDropdown({ currentStatus, onStatusChange }: RoomStatus
           <Check className="h-3.5 w-3.5" />
           <span>Available</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onStatusChange('cleaning')} className="gap-2 text-amber-700">
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Cleaning</span>
-        </DropdownMenuItem>
+
         <DropdownMenuItem onClick={() => onStatusChange('maintenance')} className="gap-2 text-rose-700">
           <AlertTriangle className="h-3.5 w-3.5" />
           <span>Maintenance</span>
